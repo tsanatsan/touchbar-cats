@@ -2,8 +2,8 @@
 //  CatsBarItem.swift
 //  MTMR
 //
-//  Touch Bar item showing the shared CatScene. Redraws at 60 fps while something moves,
-//  30 fps on battery, 15 fps when every cat is resting, and almost never while the Mac sleeps.
+//  Touch Bar item showing the shared CatScene. Redraws at 60 fps while something lively happens
+//  (30 on battery), 20 fps while cats just stroll, 10 when everyone rests, and almost never while the Mac sleeps.
 //
 
 import AppKit
@@ -78,10 +78,12 @@ final class CatsView: NSView {
         let wanted: TimeInterval
         if scene.paused || scene.systemAsleep {
             wanted = 1
-        } else if scene.isCalm {
-            wanted = 1.0 / 15
         } else {
-            wanted = scene.onBattery ? 1.0 / 30 : 1.0 / 60
+            switch scene.activity {
+            case .calm: wanted = 1.0 / 10
+            case .ambient: wanted = 1.0 / 20 // a strolling pixel cat moves half a point per frame: smooth enough
+            case .lively: wanted = scene.onBattery ? 1.0 / 30 : 1.0 / 60
+            }
         }
         schedule(wanted)
     }

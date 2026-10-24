@@ -352,12 +352,26 @@ final class CatScene {
         lastAdvance = CACurrentMediaTime()
     }
 
-    /// Nothing lively on screen: the view can redraw slowly to save battery
-    var isCalm: Bool {
-        guard flies.isEmpty, sparks.isEmpty, dust.isEmpty, bubbles.isEmpty, touches.isEmpty, exitCompletion == nil else { return false }
-        if effects.contains(where: { $0.kind != .z }) { return false }
-        if let ball = ball, ball.held || abs(ball.vx) > 1 || ball.y < ballGroundY - 0.5 { return false }
-        return cats.allSatisfy { [.loaf, .sit, .groom].contains($0.mode) && $0.cl == 0 }
+    enum Activity {
+        case calm // everyone rests: blinking and tails only
+        case ambient // cats stroll around
+        case lively // fireflies, touches, jumps, running, "кс кс"
+    }
+
+    /// How fast the bar needs to redraw right now; the view picks the frame rate from it
+    var activity: Activity {
+        if !flies.isEmpty || !sparks.isEmpty || !dust.isEmpty || !touches.isEmpty || exitCompletion != nil { return .lively }
+        if effects.contains(where: { $0.kind != .z }) || !bubbles.isEmpty { return .lively }
+        if let ball = ball, ball.held || abs(ball.vx) > 1 || ball.y < ballGroundY - 0.5 { return .lively }
+        let fast: [CatMode] = [.run, .chase, .hunt, .crouch, .jump, .attend, .swatGo, .swat, .ballChase, .fetch, .carry,
+                               .come, .enter, .exit]
+        var strolling = false
+        for cat in cats {
+            if fast.contains(cat.mode) || cat.land > 0 || cat.boopT > 0 || cat.pawT > 0 { return .lively }
+            if cat.mode == .front && abs(cat.cl - ksTarget) > 0.01 { return .lively }
+            if cat.mode == .walk || cat.mode == .boopGo || cat.mode == .front || cat.happy > 0 { strolling = true }
+        }
+        return strolling ? .ambient : .calm
     }
 
     private func placeOffscreen() {

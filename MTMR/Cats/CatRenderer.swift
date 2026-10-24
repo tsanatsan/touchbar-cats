@@ -181,12 +181,14 @@ extension CatScene {
         let reachLight: CGFloat = front ? 55 : 40
         let near = lights.filter { abs($0.x - cat.x) < 50 + CGFloat(w) * sx / 2 }
         var eyes: [(CGFloat, CGFloat, RGB)] = []
-        let pw = sx + 0.03, ph = sy + 0.03
         func empty(_ x: Int, _ y: Int) -> Bool {
             guard x >= 0, y >= 0, x < w, y < h, let q = screen[y * w + x] else { return true }
             return q == .whisker
         }
 
+        // the cat goes into a tiny bitmap and onto the bar with one draw call:
+        // far cheaper than hundreds of rectangle fills per cat every frame
+        var pixels = [UInt8](repeating: 0, count: w * h * 4)
         for y in 0 ..< h {
             for x in 0 ..< w {
                 guard let k = screen[y * w + x] else { continue }
@@ -224,9 +226,23 @@ extension CatScene {
                     col = col.mixed(fireflyLight, min(0.75, rim * 1.1))
                     if k == .whisker { alpha = 0.5 }
                 }
-                ctx.setFillColor(red: col.r / 255, green: col.g / 255, blue: col.b / 255, alpha: alpha)
-                ctx.fill(CGRect(x: wx - 0.5 * sx, y: wy - 0.5 * sy, width: pw, height: ph))
+                let i = (y * w + x) * 4 // premultiplied RGBA
+                pixels[i] = UInt8(max(0, min(255, col.r * alpha)))
+                pixels[i + 1] = UInt8(max(0, min(255, col.g * alpha)))
+                pixels[i + 2] = UInt8(max(0, min(255, col.b * alpha)))
+                pixels[i + 3] = UInt8(alpha * 255)
             }
+        }
+        if let provider = CGDataProvider(data: Data(pixels) as CFData),
+           let image = CGImage(width: w, height: h, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: w * 4, space: rgbSpace,
+                               bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                               provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent) {
+            ctx.saveGState()
+            ctx.interpolationQuality = .none
+            ctx.translateBy(x: left, y: top + CGFloat(h) * sy) // the view is flipped, images are not
+            ctx.scaleBy(x: 1, y: -1)
+            ctx.draw(image, in: CGRect(x: 0, y: 0, width: CGFloat(w) * sx, height: CGFloat(h) * sy))
+            ctx.restoreGState()
         }
 
         if dark > 0 && eyes.count < 20 {
