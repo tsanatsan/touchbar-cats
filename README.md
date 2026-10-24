@@ -1,0 +1,227 @@
+<p align="center">
+  <img src="docs/hero.gif" width="100%" alt="Коты подходят к стеклу тачбара на «кс кс кс»">
+</p>
+
+<h1 align="center">TouchBar Cats</h1>
+
+<p align="center">
+  Десять пиксельных котиков живут на Touch Bar вашего MacBook Pro.<br>
+  Ловят буквы, которые вы печатаете, и прибегают на «кс кс кс».
+</p>
+
+<p align="center">
+  <a href="https://github.com/tsanatsan/touchbar-cats/releases/latest/download/TouchBar-Cats.zip"><img alt="Скачать TouchBar Cats" src="https://img.shields.io/badge/%E2%AC%87%EF%B8%8E%20%D0%A1%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C-TouchBar%20Cats-ff8a3d?style=for-the-badge"></a>
+</p>
+
+<p align="center">
+  <img alt="macOS 11+" src="https://img.shields.io/badge/macOS-11%2B-000000?logo=apple&logoColor=white">
+  <img alt="MacBook Pro с Touch Bar" src="https://img.shields.io/badge/MacBook%20Pro-Touch%20Bar-555555">
+  <img alt="бесплатно" src="https://img.shields.io/badge/%D0%B1%D0%B5%D1%81%D0%BF%D0%BB%D0%B0%D1%82%D0%BD%D0%BE-open%20source-3DA639">
+  <img alt="MIT" src="https://img.shields.io/badge/license-MIT-3DA639">
+</p>
+
+<p align="center">
+  <a href="#как-установить">Как установить</a> ·
+  <a href="#что-умеют-котики">Что умеют котики</a> ·
+  <a href="#котики">Знакомьтесь</a> ·
+  <a href="#откуда-это">Откуда это</a> ·
+  <a href="#english">English</a>
+</p>
+
+---
+
+## Как установить
+
+Займёт пять минут, программировать не нужно. Подойдёт любой MacBook Pro с Touch Bar — полоской-экраном над цифрами.
+
+**1. Скачайте программу.** Нажмите оранжевую кнопку «Скачать» вверху. Скачается архив `TouchBar-Cats.zip`.
+
+**2. Распакуйте.** Откройте папку «Загрузки» и дважды щёлкните по архиву. Рядом появится программа **TouchBar Cats** с котиком на значке. Если Safari уже распаковал архив сам, этот шаг можно пропустить.
+
+**3. Перенесите её в «Программы».** Перетащите TouchBar Cats мышкой в папку «Программы» в левой колонке окна Finder.
+
+**4. Откройте её в первый раз.** Дважды щёлкните по TouchBar Cats. Mac скажет, что не смог проверить программу. Это нормально: программа бесплатная, и автор не платил Apple за проверку. Нажмите **«Готово»**.
+
+**5. Разрешите её запуск.** Откройте «Системные настройки» → **«Конфиденциальность и безопасность»** и пролистайте вниз до раздела «Безопасность». Там будет строчка про TouchBar Cats и кнопка **«Всё равно открыть»**. Нажмите её и подтвердите паролем или отпечатком пальца. Это нужно сделать только один раз.
+
+**6. Разрешите котикам видеть клавиатуру.** Программа попросит доступ «Универсального доступа». Нажмите **«Открыть Системные настройки»** и включите переключатель рядом с TouchBar Cats. Без этого коты будут жить на тачбаре, но буквы летать не будут. Если окошко не появилось: «Системные настройки» → «Конфиденциальность и безопасность» → «Универсальный доступ».
+
+**7. Готово!** Коты выбегут на тачбар с краёв. Попечатайте что-нибудь, а потом напишите «кс кс кс».
+
+> **Нужны яркость, громкость и обычные кнопки?** Нажмите вместе **⌃ Control + ⌥ Option + ⌘ Command + T**. Коты разбегутся, и появится обычный тачбар. То же сочетание возвращает котов.
+
+<details>
+<summary><b>Как выключить или удалить</b></summary>
+
+<br>
+
+- **Выключить:** вверху экрана, в строке меню, есть значок с буквами **MT**. Нажмите на него и выберите **Quit**.
+- **Запускать вместе с Mac:** в том же меню включите **Start at login**.
+- **Удалить:** выключите программу, перетащите TouchBar Cats из «Программ» в корзину, а в «Универсальном доступе» уберите её строчку кнопкой «−».
+
+</details>
+
+## Что умеют котики
+
+### Буквы-светлячки
+
+<img src="docs/night.gif" width="100%" alt="Ночью буквы светятся, коты прыгают за ними">
+
+Каждая буква, которую вы нажимаете, вылетает на тачбаре прямо над своей клавишей: «й» слева, «ж» справа. Буква светится, как светлячок, и подсвечивает шерсть котов вокруг. Ближайший игривый кот подкрадывается, виляет попой и прыгает. Поймал — буква рассыпается искрами, а кот довольно жуёт.
+
+С 23:00 до 7:00 наступает ночь: на тачбаре загораются звёзды и луна, коты в основном спят, а глаза у них светятся в темноте.
+
+### «кс кс кс»
+
+Напишите «кс», и коты навострят уши. С каждым следующим «кс» они подходят ближе: поворачиваются мордочками к вам и растут, пока не прижмутся к стеклу. Там они моргают, тянутся к вам и трогают стекло лапкой с розовыми подушечками. Перестанете писать — через пару секунд коты отойдут и вернутся к своим делам.
+
+### Backspace и «мяу»
+
+<img src="docs/tricks.gif" width="100%" alt="Кот сбивает лапой стёртую букву и отвечает «мрр?»">
+
+Стёрли букву — она падает на пол, и ближайший кот сбивает её лапой. Напишите «мяу», и кто-нибудь ответит.
+
+### Клубок
+
+<img src="docs/yarn.gif" width="100%" alt="Коты гоняют клубок">
+
+Напишите «клубок» или дважды коснитесь пустого места на тачбаре: сверху упадёт клубок, и коты будут его гонять.
+
+## Котики
+
+<p align="center">
+  <img src="docs/faces-1.png" width="100%" alt="Рыжик, Добби, Уголёк, Пуговка, Снежок">
+  <img src="docs/faces-2.png" width="100%" alt="Сима, Фрак, Барон, Пончик, Ириска">
+</p>
+
+| | Кто | Характер |
+|---|---|---|
+| **Рыжик** | рыжий полосатый, «М» на лбу | самый азартный охотник |
+| **Уголёк** | чёрный | огромные жёлтые глаза, ночью светятся |
+| **Фрак** | смокинг | белая манишка, белые лапки |
+| **Ириска** | трёхцветная толстушка | соня, ходит вразвалочку |
+| **Сима** | сиамская | тёмная маска, голубые раскосые глаза |
+| **Пончик** | толстый серо-белый | почти всё время спит |
+| **Добби** | сфинкс | лысый, огромные уши, морщинки |
+| **Барон** | мейн-кун | самый большой, кисточки на ушах, грива |
+| **Пуговка** | вислоухая | круглая мордочка, совиные глаза |
+| **Снежок** | белый пушистый | глаза разного цвета |
+
+Коты гуляют, умываются, спят клубком, потягиваются, зевают и трутся носами друг о друга. Того, кого вы гладите чаще всех, программа запоминает, и он сам подходит к пальцу.
+
+## Слова и касания
+
+| Напечатайте | Что будет |
+|---|---|
+| любую букву | светлячок над её клавишей, коты охотятся |
+| «кс», ещё «кс», ещё… | коты подходят к стеклу, с каждым разом ближе |
+| «мяу» | кот отвечает |
+| «клубок» | сверху падает клубок |
+| Backspace | кот сбивает стёртую букву |
+| пробел | облачко огоньков |
+
+| Сделайте пальцем | Что будет |
+|---|---|
+| медленно проведите над котом | вы его гладите: жмурится, сердечки, говорит своё имя |
+| быстро проведите | игривые коты гонятся за пальцем |
+| коснитесь спящего | вздрагивает и просыпается |
+| коснитесь мордочки у стекла | «буп» и румяные щёчки |
+| дважды коснитесь пустого места | падает клубок |
+| смахните клубок | клубок катится |
+| дважды коснитесь клубка | кот уносит его в зубах |
+| задержите палец | любимчик подходит сам |
+
+**Меню котиков.** Нажмите на значок **MT** в строке меню и откройте «Котики». Там видно, сколько букв поймано сегодня. Можно добавить или убрать кота, выбрать, кто из десяти живёт на тачбаре, и включить вечную ночь или вечный день.
+
+## Это безопасно?
+
+- Буквы только рисуются на тачбаре. Программа их никуда не записывает и не отправляет.
+- В интернет программа не ходит вообще.
+- В полях для паролей macOS сама прячет нажатия от всех программ, так что пароли на тачбар не попадут.
+- Сочетания с ⌘, ⌃ и ⌥ светлячками не становятся.
+- Весь код открыт, его можно прочитать в этом репозитории.
+
+## Откуда это
+
+Я хотел вырастить на тачбаре что-нибудь живое. Самый простой путь к тачбару оказался в [MTMR](https://github.com/Toxblh/MTMR) («My TouchBar My Rules») Антона Пальгунова: это открытая программа, которая уже умеет занимать весь тачбар. Я взял её за основу, вырезал почти всё, что в ней было — автообновление, погоду, курсы валют, лишние разрешения — и поселил туда котов.
+
+**Огромное спасибо Антону Пальгунову и всем, кто делал MTMR, за то, что выложили код в открытый доступ.** Без них этой забавы бы не было.
+
+TouchBar Cats я раздаю точно так же: бесплатно и с открытым кодом под лицензией [MIT](LICENSE). Берите, меняйте, дарите своим котам.
+
+<details>
+<summary><b>Для разработчиков: сборка из исходников и настройка</b></summary>
+
+<br>
+
+Xcode не нужен, хватит Command Line Tools:
+
+```bash
+xcode-select --install
+```
+
+```bash
+git clone https://github.com/tsanatsan/touchbar-cats.git
+cd touchbar-cats
+make run
+```
+
+`make install` копирует программу в «Программы», `make release` собирает универсальный архив для Apple Silicon и Intel, `ARCH=x86_64 make` — сборку только под Intel. Подпись сборки привязана к идентификатору программы, поэтому разрешение «Универсального доступа» не слетает после пересборки.
+
+**Конфиг** лежит в `~/Library/Application Support/MTMR/items.json`, формат тот же, что у MTMR. По умолчанию там только коты:
+
+```json
+[
+  { "type": "cats" }
+]
+```
+
+Котов можно сузить и поставить рядом другие элементы MTMR. Например, громкость и яркость: здесь это одна кнопка, как в полосе управления Apple — коснулся и ведёшь пальцем.
+
+```json
+[
+  { "type": "cats", "width": 760 },
+  { "type": "brightness", "align": "right" },
+  { "type": "volume", "align": "right" }
+]
+```
+
+Остальные виджеты MTMR описаны в [его README](https://github.com/Toxblh/MTMR#readme).
+
+**Где что лежит:**
+
+- `MTMR/Cats/` — коты: породы и окрасы, пиксельные позы, поведение, отрисовка со светом от букв, элемент тачбара;
+- `MTMR/Widgets/ControlStripSliderItem.swift` — громкость и яркость в стиле Apple;
+- `MTMR/GlobalHotKey.swift` — сочетание ⌃⌥⌘T;
+- `build-local.sh` — сборка без Xcode.
+
+Пока что-то движется, тачбар обновляется 60 раз в секунду, на батарее — 30, когда все коты отдыхают — 15, а пока экран спит, отрисовка почти останавливается.
+
+</details>
+
+## Ограничения
+
+- Проверено на MacBook Pro 13″ с M1 и macOS 26 Tahoe. Версия для Intel собирается, но на Intel-Маке не проверялась.
+- Буквы стоят точно над клавишами на 13-дюймовом MacBook Pro: у него Esc слева и Touch ID справа от тачбара. На других моделях — примерно.
+- Программа работает с тачбаром через приватные интерфейсы macOS. По словам разработчика BetterTouchTool, в macOS 27 Apple закрыла часть этого доступа для сторонних программ (как минимум для симулятора тачбара), так что на новых версиях системы что-то может перестать работать.
+
+---
+
+<h2 id="english">English</h2>
+
+<p align="center"><a href="https://github.com/tsanatsan/touchbar-cats/releases/latest/download/TouchBar-Cats.zip"><b>⬇ Download TouchBar Cats</b></a></p>
+
+**TouchBar Cats** puts ten pixel cats on your MacBook Pro Touch Bar.
+
+- **Letters become fireflies.** Every key you press flies up on the Touch Bar right above its key and lights up the cats around it. The nearest playful cat stalks it, wiggles and pounces. At night (23:00–7:00) there are stars and a moon, and the cats' eyes glow.
+- **Type «кс» or `ks` again and again** — the Russian way to call a cat. With each one the cats come closer, turn to face you and press their noses and paws against the glass.
+- **Backspace** drops the last letter and a cat swats it away. Type `meow` and a cat answers. Type `yarn` or double-tap an empty spot to drop a ball of yarn.
+- **Touch them:** slowly move a finger over a cat to pet it, swipe fast to make them chase, tap a sleeping cat to wake it, tap a face at the glass to boop it.
+- **Ten cats:** ginger tabby, black, tuxedo, chubby calico, Siamese, chubby grey-and-white, hairless Sphynx, Maine Coon, Scottish Fold and an odd-eyed white fluffball. Your favourite one comes to your finger by itself.
+- **⌃⌥⌘T** swaps to the regular Touch Bar and back.
+
+**Install:** download the zip, unzip it, drag **TouchBar Cats** into Applications and open it. macOS will say it can't verify the app — it's free and not notarized — so press **Done**, then go to **System Settings → Privacy & Security** and click **Open Anyway**. Finally allow it in **Privacy & Security → Accessibility** so the cats can see your key presses. Letters are only drawn, never stored or sent, the app makes no network requests at all, and password fields are hidden by macOS Secure Input. Quit it from the **MT** icon in the menu bar.
+
+**Where it comes from:** I took [MTMR](https://github.com/Toxblh/MTMR) by Anton Palgunov — open source and the easiest way into the Touch Bar — cut almost everything out and moved the cats in. Huge thanks to Anton and all MTMR contributors for sharing their code. TouchBar Cats is shared the same way: free and open source under the [MIT](LICENSE) license.
+
+Tested on a 13″ M1 MacBook Pro with macOS 26. Build from source: `make run` (Command Line Tools only).

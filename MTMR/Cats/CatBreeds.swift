@@ -1,0 +1,133 @@
+//
+//  CatBreeds.swift
+//  MTMR
+//
+//  Ten pixel cats for the Touch Bar: colors, body shapes and temper.
+//
+
+import AppKit
+
+struct RGB {
+    var r: CGFloat
+    var g: CGFloat
+    var b: CGFloat
+
+    init(_ hex: UInt32) {
+        r = CGFloat((hex >> 16) & 0xFF)
+        g = CGFloat((hex >> 8) & 0xFF)
+        b = CGFloat(hex & 0xFF)
+    }
+
+    init(r: CGFloat, g: CGFloat, b: CGFloat) {
+        self.r = r
+        self.g = g
+        self.b = b
+    }
+
+    func mixed(_ other: RGB, _ k: CGFloat) -> RGB {
+        return RGB(r: r + (other.r - r) * k, g: g + (other.g - g) * k, b: b + (other.b - b) * k)
+    }
+}
+
+enum Paint {
+    case outline, fur, dark, belly, eye, eye2, pink, patch
+    case white, whisker, pupil, yarnA, yarnB
+}
+
+enum Part {
+    case body, belly, head, ear, earIn, tuft, eye, eyeClosed, nose, mouth, muzzle, chest
+    case leg, paw, bean, tail, tailTip, whisker, blush, shine, pupil, yarn, ruff, tuftIn
+}
+
+enum Coat {
+    case tabby // stripes
+    case solid
+    case tuxedo // white chest and paws
+    case calico // white with orange and black patches
+    case points // siamese: dark ears, mask, paws and tail
+    case bicolor // white muzzle blaze, chest and paws
+    case skin // hairless sphynx: wrinkles instead of fur pattern
+}
+
+enum EyeShape {
+    case round, big, almond
+}
+
+enum EarShape {
+    case normal, big, folded, tufted
+}
+
+enum TailShape {
+    case normal, bushy, thin
+}
+
+struct Breed {
+    let name: String
+    let kind: String
+    let coat: Coat
+    let palette: [Paint: RGB]
+    let playful: CGFloat
+    let sleepy: CGFloat
+    var size: CGFloat = 1
+    var fat = false
+    var ears = EarShape.normal
+    var tail = TailShape.normal
+    var speed: CGFloat = 1
+    var eyes = EyeShape.round
+    var lids = false // sleepy half-closed eyelids until excited
+    var ruff = false // fluffy collar around the face
+
+    func color(_ paint: Paint) -> RGB {
+        if let c = palette[paint] { return c }
+        switch paint {
+        case .white: return RGB(0xFFFFFF)
+        case .whisker: return RGB(0xB9B4AC)
+        case .pupil: return RGB(0x141418)
+        case .yarnA: return RGB(0xF27A98)
+        case .yarnB: return RGB(0xC84468)
+        case .eye2: return palette[.eye] ?? RGB(0xFFFFFF)
+        default: return palette[.fur] ?? RGB(0xFFFFFF)
+        }
+    }
+}
+
+private func palette(o: UInt32, f: UInt32, d: UInt32, b: UInt32, e: UInt32, p: UInt32,
+                     patch: UInt32? = nil, e2: UInt32? = nil) -> [Paint: RGB] {
+    var result: [Paint: RGB] = [.outline: RGB(o), .fur: RGB(f), .dark: RGB(d), .belly: RGB(b), .eye: RGB(e), .pink: RGB(p)]
+    if let patch = patch { result[.patch] = RGB(patch) }
+    if let e2 = e2 { result[.eye2] = RGB(e2) }
+    return result
+}
+
+let catBreeds: [Breed] = [
+    Breed(name: "Рыжик", kind: "рыжий полосатый", coat: .tabby,
+          palette: palette(o: 0x4A2A14, f: 0xE8964A, d: 0xB05F26, b: 0xF7D6AE, e: 0x9BE26F, p: 0xFF9AA8),
+          playful: 0.9, sleepy: 0.3),
+    Breed(name: "Уголёк", kind: "чёрный", coat: .solid,
+          palette: palette(o: 0x7A7A94, f: 0x2F2F3A, d: 0x1D1D25, b: 0x454552, e: 0xF5D33F, p: 0xD7798A),
+          playful: 0.6, sleepy: 0.6, eyes: .big),
+    Breed(name: "Фрак", kind: "смокинг", coat: .tuxedo,
+          palette: palette(o: 0x70708A, f: 0x363642, d: 0x24242C, b: 0xF2F2EE, e: 0x9BE07A, p: 0xFF9AA8),
+          playful: 0.7, sleepy: 0.5),
+    Breed(name: "Ириска", kind: "трёхцветная толстушка", coat: .calico,
+          palette: palette(o: 0x5A4A3C, f: 0xF3EEE4, d: 0xDE8A3C, b: 0xFFFAF2, e: 0xE0B040, p: 0xFF9AA8, patch: 0x3A3530),
+          playful: 0.4, sleepy: 0.9, fat: true, speed: 0.75),
+    Breed(name: "Сима", kind: "сиамская", coat: .points,
+          palette: palette(o: 0x4A3326, f: 0xF0E4CF, d: 0x5E4334, b: 0xF8F0E2, e: 0x5FB4FF, p: 0xE88A96),
+          playful: 0.8, sleepy: 0.4, eyes: .almond),
+    Breed(name: "Пончик", kind: "толстый серо-белый", coat: .bicolor,
+          palette: palette(o: 0x3E4250, f: 0x8C93A3, d: 0x6B7282, b: 0xF4F4F2, e: 0xF2C14E, p: 0xFFA0B0),
+          playful: 0.3, sleepy: 0.95, size: 1.05, fat: true, speed: 0.7, lids: true),
+    Breed(name: "Добби", kind: "сфинкс", coat: .skin,
+          palette: palette(o: 0x6E4A44, f: 0xE9C2B0, d: 0xC4917F, b: 0xF3D6C8, e: 0x7FD3C4, p: 0xE58A96),
+          playful: 0.75, sleepy: 0.5, ears: .big, tail: .thin, eyes: .big),
+    Breed(name: "Барон", kind: "мейн-кун", coat: .tabby,
+          palette: palette(o: 0x2E2216, f: 0x8A6A48, d: 0x4E3A26, b: 0xE6D6BE, e: 0xD9B23A, p: 0xD99A9A),
+          playful: 0.55, sleepy: 0.5, size: 1.18, ears: .tufted, tail: .bushy, speed: 1.1, ruff: true),
+    Breed(name: "Пуговка", kind: "вислоухая", coat: .solid,
+          palette: palette(o: 0x34404C, f: 0xA7B4C2, d: 0x7F8C9A, b: 0xDDE4EA, e: 0xE8A33A, p: 0xF0A0B0),
+          playful: 0.65, sleepy: 0.6, size: 0.92, ears: .folded, eyes: .big),
+    Breed(name: "Снежок", kind: "белый, глаза разные", coat: .solid,
+          palette: palette(o: 0x8A8A96, f: 0xF7F7F4, d: 0xDCDCD6, b: 0xFFFFFF, e: 0x6CB6FF, p: 0xFFAAB8, e2: 0xF2B33A),
+          playful: 0.5, sleepy: 0.7, tail: .bushy, eyes: .big, ruff: true),
+]
