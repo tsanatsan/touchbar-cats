@@ -4,6 +4,12 @@ struct AppSettings {
     @UserDefault(key: "com.toxblh.mtmr.settings.showControlStrip", defaultValue: false)
     static var showControlStripState: Bool
     
+    @UserDefault(key: "cats.settings.seasons", defaultValue: true)
+    static var seasons: Bool
+
+    @UserDefault(key: "cats.settings.sounds", defaultValue: false)
+    static var catSounds: Bool
+
     /// "" follows the system language, "ru" or "en" is fixed
     @UserDefault(key: "com.toxblh.mtmr.settings.language", defaultValue: "")
     static var language: String

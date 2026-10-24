@@ -14,7 +14,12 @@ import IOKit.ps
 enum CatMode {
     case sit, walk, run, chase, hunt, crouch, jump, loaf, stretch, yawn, groom, munch
     case boop, boopGo, attend, front, swatGo, swat, ballChase, fetch, carry, come, enter, exit
+    // toys, words and helpers (CatExtras.swift)
+    case eatGo, eat, wave, sulk, boxGo, inBox, pomodoro, warmGo, warm
+    case laserChase, mouseHunt
 }
+
+private let extraModes: Set<CatMode> = [.eatGo, .eat, .wave, .sulk, .boxGo, .inBox, .pomodoro, .warmGo, .warm, .laserChase, .mouseHunt]
 
 enum FlyState {
     case rise, hover, drop, knocked, fall
@@ -63,7 +68,7 @@ struct Jump {
 }
 
 final class Cat {
-    let breed: Breed
+    var breed: Breed
     let index: Int
     let seed: Int
     var x: CGFloat = 0
@@ -98,6 +103,9 @@ final class Cat {
     var nameShown = false
     var petIdle: CGFloat = 0
     var affection: CGFloat = 0
+    var extraT: CGFloat = 0
+
+    var isExtraMode: Bool { return extraModes.contains(mode) }
     var slot = 0 // place in the row at the glass
 
     init(breed: Breed, index: Int) {
@@ -161,6 +169,7 @@ final class YarnBall {
 
 struct TouchPoint {
     var x: CGFloat
+    var startX: CGFloat = 0
     var vx: CGFloat = 0
     var lastMove: CFTimeInterval
     var start: CFTimeInterval
@@ -197,7 +206,8 @@ final class CatScene {
     var dust: [Particle] = []
     var bubbles: [Bubble] = []
     var ball: YarnBall?
-    private var pending: [(at: CGFloat, run: () -> Void)] = []
+    let extras = CatExtras()
+    var pending: [(at: CGFloat, run: () -> Void)] = []
     private var history: [(ch: String, x: CGFloat)] = []
     private var typed = ""
     private var ksCount = 0
@@ -209,7 +219,7 @@ final class CatScene {
     private var exitCompletion: (() -> Void)?
     private var exitDeadline: CGFloat = 0
     private var lastAdvance: CFTimeInterval = 0
-    private var touches: [Int: TouchPoint] = [:]
+    private(set) var touches: [Int: TouchPoint] = [:]
     private var taps: [CGFloat] = []
     private var doubleTaps: [CGFloat] = []
     private var lastTap: (x: CGFloat, time: CFTimeInterval)?
@@ -309,6 +319,15 @@ final class CatScene {
         save()
     }
 
+    /// The workshop saved changes to one of your cats
+    func updateCustomCat(_ record: CustomCat) {
+        var stored = CustomCatStore.load()
+        if let i = stored.firstIndex(where: { $0.id == record.id }) { stored[i] = record } else { stored.append(record) }
+        CustomCatStore.save(stored)
+        roster.first { $0.breed.key == record.id }?.breed = record.breed
+        saveSoon()
+    }
+
     func deleteCustomCat(_ id: String) {
         CustomCatStore.save(CustomCatStore.load().filter { $0.id != id })
         guard let cat = roster.first(where: { $0.breed.key == id }) else { return }
@@ -360,6 +379,7 @@ final class CatScene {
 
     /// How fast the bar needs to redraw right now; the view picks the frame rate from it
     var activity: Activity {
+        if extrasLively || CatRecorder.shared.isRecording { return .lively }
         if !flies.isEmpty || !sparks.isEmpty || !dust.isEmpty || !touches.isEmpty || exitCompletion != nil { return .lively }
         if effects.contains(where: { $0.kind != .z }) || !bubbles.isEmpty { return .lively }
         if let ball = ball, ball.held || abs(ball.vx) > 1 || ball.y < ballGroundY - 0.5 { return .lively }
@@ -371,7 +391,7 @@ final class CatScene {
             if cat.mode == .front && abs(cat.cl - ksTarget) > 0.01 { return .lively }
             if cat.mode == .walk || cat.mode == .boopGo || cat.mode == .front || cat.happy > 0 { strolling = true }
         }
-        return strolling ? .ambient : .calm
+        return strolling || extrasAmbient ? .ambient : .calm
     }
 
     private func placeOffscreen() {
@@ -381,7 +401,7 @@ final class CatScene {
         }
     }
 
-    private func resetState(_ cat: Cat) {
+    func resetState(_ cat: Cat) {
         cat.prey = nil
         cat.target = nil
         cat.jy = 0
@@ -418,7 +438,7 @@ final class CatScene {
         update(dt)
     }
 
-    private var isNight: Bool {
+    var isNight: Bool {
         if nightMode == 1 { return true }
         if nightMode == 2 { return false }
         let h = Calendar.current.component(.hour, from: Date())
@@ -488,18 +508,19 @@ final class CatScene {
         keyPressed(code: Int(event.keyCode), characters: event.characters)
     }
 
-    private func keyPressed(code: Int, characters: String?) {
+    func keyPressed(code: Int, characters: String?) {
         guard !paused, !systemAsleep else { return }
         guard let x = barX(forKey: code) else { return }
         if code == kVK_Delete {
             backspace()
+            wordBackspace()
             return
         }
         if code == kVK_Space {
             for _ in 0 ..< 3 { spawnFly(nil, x: x + rnd(-18, 18)) }
+            endWord(x: x)
             return
         }
-        guard flies.count < 40 else { return }
         let ch: String
         if code == kVK_Return {
             ch = "↵"
@@ -507,13 +528,19 @@ final class CatScene {
             guard let typedChars = characters, typedChars.count == 1 else { return }
             ch = typedChars
         }
-        spawnFly(ch, x: x)
+        if ch != "↵" { noteTyped() }
+        if flies.count < 40 { spawnFly(ch, x: x) }
         let lower = ch.lowercased()
         if lower.range(of: "^[a-zа-яё]$", options: .regularExpression) != nil {
             history.append((ch, x))
             if history.count > 40 { history.removeFirst() }
             typed = String((typed + lower).suffix(16))
             checkWords(x: x)
+            appendWord(lower, x: x)
+        } else if lower.range(of: "^[0-9]$", options: .regularExpression) != nil {
+            appendWord(lower, x: x)
+        } else {
+            endWord(x: x)
         }
     }
 
@@ -570,6 +597,7 @@ final class CatScene {
             cat.dir = x >= cat.x ? 1 : -1
             cat.look = 1
             self.bubbles.append(Bubble(cat: cat, text: (isRussian ? ["мяу", "мяу!", "мрр?"] : ["meow", "meow!", "mrr?"]).randomElement()!))
+            CatSounds.shared.play(.meow, pan: self.pan(cat.x))
         }))
     }
 
@@ -590,7 +618,7 @@ final class CatScene {
         f.state = .drop
         f.dropT = 0
         let busy: [CatMode] = [.jump, .crouch, .swatGo, .swat, .loaf, .front, .attend, .exit, .enter, .carry, .fetch]
-        if let cat = cats.filter({ !busy.contains($0.mode) && abs($0.x - f.x) < 300 }).min(by: { abs($0.x - f.x) < abs($1.x - f.x) }) {
+        if let cat = cats.filter({ !busy.contains($0.mode) && !$0.isExtraMode && abs($0.x - f.x) < 300 }).min(by: { abs($0.x - f.x) < abs($1.x - f.x) }) {
             cat.target = f
             cat.prey = nil
             f.swatter = cat
@@ -647,7 +675,7 @@ final class CatScene {
 
     func touchBegan(id: Int, x: CGFloat) {
         let now = CACurrentMediaTime()
-        touches[id] = TouchPoint(x: x, lastMove: now, start: now)
+        touches[id] = TouchPoint(x: x, startX: x, lastMove: now, start: now)
         taps.append(x)
         if let last = lastTap, now - last.time < 0.35, abs(last.x - x) < 22 {
             doubleTaps.append(x)
@@ -675,24 +703,24 @@ final class CatScene {
         touches.removeValue(forKey: id)
     }
 
-    private func recentVx(_ p: TouchPoint, _ now: CFTimeInterval) -> CGFloat {
+    func recentVx(_ p: TouchPoint, _ now: CFTimeInterval) -> CGFloat {
         return now - p.lastMove < 0.12 ? p.vx : 0
     }
 
     // MARK: - Update
 
-    private func spawn(_ kind: Effect.Kind, _ x: CGFloat, _ y: CGFloat) {
+    func spawn(_ kind: Effect.Kind, _ x: CGFloat, _ y: CGFloat) {
         effects.append(Effect(kind: kind, x: x, y: y))
     }
 
-    private func puff(_ x: CGFloat) {
+    func puff(_ x: CGFloat) {
         for i in 0 ..< 7 {
             let s: CGFloat = i % 2 == 1 ? 1 : -1
             dust.append(Particle(x: x + s * rnd(2, 6), y: height - 1.2, vx: s * rnd(6, 18), vy: -rnd(1, 5)))
         }
     }
 
-    private func burst(_ x: CGFloat, _ y: CGFloat) {
+    func burst(_ x: CGFloat, _ y: CGFloat) {
         for _ in 0 ..< 12 {
             let a = rnd(0, 6.28), v = rnd(10, 28)
             sparks.append(Particle(x: x, y: y, vx: cos(a) * v, vy: sin(a) * v - 6))
@@ -700,7 +728,7 @@ final class CatScene {
     }
 
     @discardableResult
-    private func moveTo(_ cat: Cat, _ tx: CGFloat, _ speed: CGFloat, _ dt: CGFloat) -> Bool {
+    func moveTo(_ cat: Cat, _ tx: CGFloat, _ speed: CGFloat, _ dt: CGFloat) -> Bool {
         let d = tx - cat.x
         if abs(d) < 1.5 { return true }
         cat.dir = d > 0 ? 1 : -1
@@ -720,7 +748,8 @@ final class CatScene {
         for (i, cat) in cats.filter({ !$0.removing }).sorted(by: { $0.x < $1.x }).enumerated() { cat.slot = i }
     }
 
-    private func next(_ cat: Cat) {
+    func next(_ cat: Cat) {
+        if extraNext(cat) { return }
         let b = cat.breed
         if cat.mode == .loaf {
             cat.setMode(.stretch, 1.1)
@@ -801,6 +830,7 @@ final class CatScene {
 
         updateBall(dt)
         updateFlies(dt)
+        updateExtras(dt, points: points)
 
         let fastest = points.max(by: { abs(recentVx($0, now)) < abs(recentVx($1, now)) })
         let favorite = roster.max(by: { $0.affection < $1.affection }).flatMap { $0.affection > 8 ? $0 : nil }
@@ -956,7 +986,9 @@ final class CatScene {
 
         // taps
         if !leaving, let tapX = taps.first(where: { abs($0 - cat.x) < reach + 2 }) {
-            if front {
+            if cat.isExtraMode {
+                tapExtra(cat)
+            } else if front {
                 cat.boopT = 0.35
                 cat.happy = 0.8
                 spawn(.heart, cat.x - 2, 2)
@@ -993,7 +1025,7 @@ final class CatScene {
                 cat.nameShown = true
                 if !front { bubbles.append(Bubble(cat: cat, text: cat.breed.displayName)) }
             }
-            if ![.loaf, .sit, .front].contains(cat.mode) { cat.setMode(.sit, 3) }
+            if ![.loaf, .sit, .front].contains(cat.mode) && !cat.isExtraMode { cat.setMode(.sit, 3) }
             cat.dur = max(cat.dur, cat.mt + 1.5)
             cat.heartT -= dt
             if cat.heartT <= 0 {
@@ -1200,12 +1232,15 @@ final class CatScene {
                     cat.caught = false
                     cat.happy = 1
                     countCatch()
+                    CatSounds.shared.play(.mrrp, pan: pan(cat.x))
                     cat.setMode(.munch, 1.1)
                     spawn(.heart, cat.x + cat.dir * 4, 5)
                 } else {
                     cat.setMode(.sit, rnd(0.8, 1.8))
                 }
             }
+        case .eatGo, .eat, .wave, .sulk, .boxGo, .inBox, .pomodoro, .warmGo, .warm, .laserChase, .mouseHunt:
+            updateExtraMode(cat, dt)
         default:
             if cat.mode == .loaf {
                 cat.zT -= dt
@@ -1224,6 +1259,7 @@ final class CatScene {
         let defaults = UserDefaults.standard
         if defaults.string(forKey: "cats.caught.day") != CatScene.dayString() { caughtToday = 0 }
         caughtToday += 1
+        extras.stats.caught(today: caughtToday)
         saveSoon()
     }
 
@@ -1233,6 +1269,7 @@ final class CatScene {
 
     func save() {
         saveAt = nil
+        extras.stats.save()
         let defaults = UserDefaults.standard
         defaults.set(cats.filter { !$0.removing }.map { $0.breed.key }, forKey: "cats.enabledIds")
         var affection: [String: Double] = [:]

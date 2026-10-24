@@ -95,6 +95,11 @@ final class SpriteCanvas {
     }
 }
 
+/// Seasonal dress-up, set by the scene every frame
+enum CatDecor {
+    static var hats = false
+}
+
 enum EyeState {
     case open, up, wide, happy, closed
 }
@@ -148,6 +153,12 @@ private func sideHead(_ c: SpriteCanvas, _ hx: Int, _ hy: Int, breed: Breed, eye
         }
     }
     c.rect(hx + 3, hx + 5, hy + 4, hy + 4, .muzzle)
+    if CatDecor.hats { // a little Santa hat tilted back
+        c.rect(hx + 1, hx + 5, hy - 1, hy - 1, .hat, .hatWhite)
+        c.rect(hx + 1, hx + 4, hy - 2, hy - 2, .hat, .hatRed)
+        c.rect(hx, hx + 2, hy - 3, hy - 3, .hat, .hatRed)
+        c.p(hx - 1, hy - 3, .hat, .hatWhite)
+    }
 
     switch eyes {
     case .open:
@@ -195,7 +206,8 @@ private func sidePose(_ cat: Cat, t: CGFloat) -> SpriteCanvas {
     let baseEyes: EyeState = cat.happy > 0 ? .happy : (cat.look > 0 ? .up : (blink ? .closed : .open))
 
     switch cat.mode {
-    case .walk, .run, .chase, .hunt, .attend, .come, .swatGo, .ballChase, .fetch, .carry, .enter, .exit, .boopGo:
+    case .walk, .run, .chase, .hunt, .attend, .come, .swatGo, .ballChase, .fetch, .carry, .enter, .exit, .boopGo,
+         .eatGo, .boxGo, .warmGo, .laserChase, .mouseHunt:
         let bob = (cat.mode != .walk && cat.mode != .enter && frame % 2 == 1) ? 1 : 0
         let legTop: Int
         if fat {
@@ -264,7 +276,7 @@ private func sidePose(_ cat: Cat, t: CGFloat) -> SpriteCanvas {
         sideHead(c, 18, 3, breed: b, eyes: .wide)
         c.tail([CGPoint(x: 7, y: 10), CGPoint(x: 5, y: 9), CGPoint(x: 3, y: 9), CGPoint(x: 1, y: 8)], thick: thick)
 
-    case .loaf:
+    case .loaf, .pomodoro, .warm:
         let breath: CGFloat = sin(t * 1.6 + seed) > 0 ? 0.35 : 0
         if fat {
             c.ellipse(13, 14.3, 8.4, 3.1 + breath, .body)
@@ -274,7 +286,8 @@ private func sidePose(_ cat: Cat, t: CGFloat) -> SpriteCanvas {
             c.rect(7, 19, 17, 17, .body)
         }
         c.tail([CGPoint(x: 6, y: 14), CGPoint(x: 5, y: 16), CGPoint(x: 7, y: 17), CGPoint(x: 11, y: 17), CGPoint(x: 15, y: 17)], thick: thick)
-        sideHead(c, fat ? 19 : 18, 10, breed: b, eyes: cat.happy > 0 ? .happy : .closed, twitch: twitch)
+        let loafEyes: EyeState = cat.happy > 0 || cat.mode == .warm ? .happy : .closed
+        sideHead(c, fat ? 19 : 18, 10, breed: b, eyes: loafEyes, twitch: twitch)
 
     case .stretch:
         for x in 8 ... 18 {
@@ -291,8 +304,9 @@ private func sidePose(_ cat: Cat, t: CGFloat) -> SpriteCanvas {
         sideHead(c, 20, 10, breed: b, eyes: .closed)
         c.tail(upTail(7, 9, seed: seed, t: t, length: 7, amp: 0.08), thick: thick)
 
-    default: // sit, groom, yawn, munch, boop, swat
-        let groom = cat.mode == .groom, yawn = cat.mode == .yawn, munch = cat.mode == .munch, swat = cat.mode == .swat
+    default: // sit, groom, yawn, munch, boop, swat, eat, wave, sulk, inBox
+        let groom = cat.mode == .groom, yawn = cat.mode == .yawn, munch = cat.mode == .munch || cat.mode == .eat
+        let swat = cat.mode == .swat, wave = cat.mode == .wave, sulk = cat.mode == .sulk
         let pawUp = groom && Int(t * 3) % 2 == 0
         let hd = groom ? 1 : 0
         if fat {
@@ -310,6 +324,10 @@ private func sidePose(_ cat: Cat, t: CGFloat) -> SpriteCanvas {
         if pawUp {
             c.rect(18, 18, 8, 10, .leg)
             c.p(19, 8, .paw)
+        } else if wave {
+            let up = Int(t * 5) % 2 == 0 ? 0 : 1
+            c.rect(18, 18, 6 + up, 10, .leg)
+            c.p(18, 5 + up, .paw)
         } else if swat && cat.mt < 0.15 {
             c.rect(18, 18, 7, 10, .leg)
             c.p(18, 6, .paw)
@@ -319,8 +337,9 @@ private func sidePose(_ cat: Cat, t: CGFloat) -> SpriteCanvas {
         } else {
             c.leg(17, 12, 17)
         }
-        let eyes: EyeState = (yawn || groom) ? .closed : (munch ? .happy : (swat ? .wide : baseEyes))
-        sideHead(c, 14 - hd, 2 + hd - (yawn ? 1 : 0), breed: b, eyes: eyes,
+        let eyes: EyeState = (yawn || groom || sulk) ? .closed : (munch || wave ? .happy : (swat ? .wide : baseEyes))
+        let eatDown = cat.mode == .eat ? 2 : 0
+        sideHead(c, 14 - hd + eatDown / 2, 2 + hd - (yawn ? 1 : 0) + eatDown, breed: b, eyes: eyes,
                  mouth: yawn || (munch && Int(t * 6) % 2 == 0), twitch: twitch)
         if pawUp { c.p(18, 8, .mouth, .pink) }
         let sw = CGFloat((sin(t * 1.8 + seed) * 1.2).rounded())
@@ -461,6 +480,13 @@ private func frontPose(_ cat: Cat, t: CGFloat, dark: CGFloat) -> SpriteCanvas {
     c.ellipse(13.5, cy, rx, ry, .head)
     if fat { c.ellipse(13.5, cy + 3.2, rx + 0.9, 4.4, .head) }
     c.ellipse(13.5, 16.7, 3.7, 2.3, .muzzle)
+    if CatDecor.hats {
+        c.rect(6, 13, 3, 3, .hat, .hatWhite)
+        c.rect(7, 12, 2, 2, .hat, .hatRed)
+        c.rect(8, 11, 1, 1, .hat, .hatRed)
+        c.rect(10, 12, 0, 0, .hat, .hatRed)
+        c.p(13, 0, .hat, .hatWhite)
+    }
     frontEye(c, cat, side: -1, dark: dark, t: t)
     frontEye(c, cat, side: 1, dark: dark, t: t)
 

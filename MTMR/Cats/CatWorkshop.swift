@@ -33,12 +33,17 @@ final class CatWorkshop: NSObject, NSWindowDelegate {
                          colors: ["fur": 0xB9A58C, "dark": 0x6E5A44, "belly": 0xEDE3D4, "eye": 0x9BD26F, "pink": 0xFF9AA8])
     }
 
-    func show() {
+    /// Without a record: a new cat. With one: one of your cats to edit
+    func show(record existing: CustomCat? = nil) {
         if window == nil { build() }
-        record = CatWorkshop.blankRecord()
+        record = existing ?? CatWorkshop.blankRecord()
         photo.image = nil
-        status.stringValue = tr("Перетащите сюда фото своего кота — или выберите файл.",
-                                "Drop a photo of your cat here — or choose a file.")
+        let editing = CatScene.shared.roster.contains { $0.breed.key == record.id }
+        status.stringValue = existing == nil
+            ? tr("Перетащите сюда фото своего кота — или выберите несколько фото сразу, так окрас угадается точнее.",
+                 "Drop a photo of your cat here — or pick several photos at once for a better match.")
+            : tr("Поправьте кота или перерисуйте его по другому фото.", "Tweak your cat or redraw it from another photo.")
+        settle.title = editing ? tr("Сохранить", "Save") : tr("Поселить на тачбар", "Move onto the Touch Bar")
         fillControls()
         NSApp.activate(ignoringOtherApps: true)
         window?.center()
@@ -185,7 +190,7 @@ final class CatWorkshop: NSObject, NSWindowDelegate {
             let c = record.colors[key].map { RGB($0) } ?? breed.color(fallback[key]!)
             wells[key]?.color = NSColor(srgbRed: c.r / 255, green: c.g / 255, blue: c.b / 255, alpha: 1)
         }
-        settle.isEnabled = CatScene.shared.canAddCustomCat
+        settle.isEnabled = CatScene.shared.canAddCustomCat || CatScene.shared.roster.contains { $0.breed.key == record.id }
         preview.breed = breed
     }
 
@@ -213,35 +218,38 @@ final class CatWorkshop: NSObject, NSWindowDelegate {
     @objc private func choosePhoto(_: Any?) {
         let panel = NSOpenPanel()
         panel.allowedFileTypes = NSImage.imageTypes
-        panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        load(url)
+        panel.allowsMultipleSelection = true
+        guard panel.runModal() == .OK else { return }
+        load(panel.urls)
     }
 
-    func load(_ url: URL) {
-        guard let image = NSImage(contentsOf: url) else { return }
-        photo.image = image
-        analyze(image)
+    func load(_ urls: [URL]) {
+        let images = urls.compactMap { NSImage(contentsOf: $0) }
+        guard let first = images.first else { return }
+        photo.image = first
+        analyze(images)
     }
 
     @objc private func photoChanged(_: Any?) {
-        if let image = photo.image { analyze(image) }
+        if let image = photo.image { analyze([image]) }
     }
 
-    private func analyze(_ image: NSImage) {
+    private func analyze(_ images: [NSImage]) {
         status.stringValue = tr("Смотрю на кота…", "Looking at the cat…")
         let keepName = record.name
         DispatchQueue.global(qos: .userInitiated).async {
-            let result = CatPhotoAnalyzer.analyze(image)
+            let result = CatWorkshop.merge(images.compactMap { CatPhotoAnalyzer.analyze($0) })
             DispatchQueue.main.async {
                 guard let result = result else {
                     self.status.stringValue = tr("Не получилось разобрать фото. Попробуйте другое или настройте кота вручную.",
                                                  "Couldn't read this photo. Try another one or set the cat up by hand.")
                     return
                 }
-                let id = self.record.id
+                let old = self.record
                 self.record = result.record
-                self.record.id = id
+                self.record.id = old.id
+                self.record.kitten = old.kitten
+                self.record.parent = old.parent
                 if keepName != tr("Мой кот", "My cat") { self.record.name = keepName }
                 self.fillControls()
                 let coatTitle = (Coat(rawValue: result.record.coat) ?? .solid).title
@@ -260,8 +268,34 @@ final class CatWorkshop: NSObject, NSWindowDelegate {
 
     @objc private func settle(_: Any?) {
         readControls()
-        CatScene.shared.addCustomCat(record)
+        if CatScene.shared.roster.contains(where: { $0.breed.key == record.id }) {
+            CatScene.shared.updateCustomCat(record)
+        } else {
+            CatScene.shared.addCustomCat(record)
+        }
         window?.close()
+    }
+
+    /// Several photos of one cat: the coat most of them agree on, colors averaged over those photos
+    private static func merge(_ results: [PhotoAnalysis]) -> PhotoAnalysis? {
+        guard var best = results.first else { return nil }
+        guard results.count > 1 else { return best }
+        let coats = Dictionary(grouping: results, by: { $0.record.coat })
+        let agreeing = coats.values.max { $0.count < $1.count } ?? results
+        best = agreeing[0]
+        for key in ["fur", "dark", "belly", "patch", "eye", "eye2", "pink"] {
+            let values = agreeing.compactMap { $0.record.colors[key] }.map { RGB($0) }
+            guard !values.isEmpty, values.count * 2 >= agreeing.count else {
+                best.record.colors[key] = nil
+                continue
+            }
+            let n = CGFloat(values.count)
+            best.record.colors[key] = RGB(r: values.reduce(0) { $0 + $1.r } / n, g: values.reduce(0) { $0 + $1.g } / n,
+                                          b: values.reduce(0) { $0 + $1.b } / n).hex
+        }
+        if best.record.colors["fur"] == nil { best.record.colors["fur"] = agreeing[0].record.colors["fur"] }
+        best.foundCat = results.contains { $0.foundCat }
+        return best
     }
 
     func windowWillClose(_: Notification) {

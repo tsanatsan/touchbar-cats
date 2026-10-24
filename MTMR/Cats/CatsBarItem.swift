@@ -74,6 +74,7 @@ final class CatsView: NSView {
         if bounds.width > 0 { scene.width = bounds.width }
         scene.advance(to: CACurrentMediaTime())
         if !scene.paused && !scene.systemAsleep { needsDisplay = true }
+        CatRecorder.shared.capture(scene)
 
         let wanted: TimeInterval
         if scene.paused || scene.systemAsleep {
@@ -91,6 +92,10 @@ final class CatsView: NSView {
     override func draw(_: NSRect) {
         guard let ctx = NSGraphicsContext.current?.cgContext else { return }
         CatScene.shared.draw(in: ctx)
+        if CatRecorder.shared.isRecording { // not part of the GIF
+            ctx.setFillColor(red: 1, green: 0.23, blue: 0.19, alpha: 0.9)
+            ctx.fillEllipse(in: CGRect(x: bounds.width - 7, y: 2, width: 4, height: 4))
+        }
     }
 
     // MARK: - Touches

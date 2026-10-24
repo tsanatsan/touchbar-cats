@@ -96,6 +96,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         createMenu()
     }
 
+    @objc func toggleSeasons(_: Any?) {
+        AppSettings.seasons.toggle()
+        createMenu()
+    }
+
+    @objc func toggleSounds(_: Any?) {
+        AppSettings.catSounds.toggle()
+        if AppSettings.catSounds { CatSounds.shared.play(.mrrp, pan: 0) }
+        createMenu()
+    }
+
     @objc func setLanguage(_ item: NSMenuItem) {
         AppSettings.language = item.representedObject as? String ?? ""
         createMenu()
@@ -162,6 +173,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             item(tr("Громкость двумя пальцами, яркость тремя", "Two fingers: volume, three: brightness"), #selector(toggleMultitouch(_:)), on: AppSettings.multitouchGestures),
             item(tr("Не показывать в «\(appName)»", "Hide in “\(appName)”"), #selector(toggleBlackListedApp(_:)), on: isBlockedApp),
             NSMenuItem.separator(),
+            item(tr("Сезоны и праздники", "Seasons and holidays"), #selector(toggleSeasons(_:)), on: AppSettings.seasons),
+            item(tr("Звуки котов", "Cat sounds"), #selector(toggleSounds(_:)), on: AppSettings.catSounds),
+            NSMenuItem.separator(),
             item(tr("Открыть конфиг…", "Open config…"), #selector(openPreferences(_:))),
             item(tr("Загрузить пресет…", "Load preset…"), #selector(openPreset(_:))),
             NSMenuItem.separator(),
@@ -209,9 +223,18 @@ extension AppDelegate: NSMenuDelegate {
                               #selector(openAccessibilitySettings(_:))))
             menu.addItem(NSMenuItem.separator())
         }
-        let caught = item(tr("Поймано букв сегодня: \(scene.caughtTodayNow)", "Letters caught today: \(scene.caughtTodayNow)"), nil)
-        caught.isEnabled = false
-        menu.addItem(caught)
+        let stats = scene.extras.stats
+        let caughtNow = scene.caughtTodayNow
+        let share = stats.typed > 0 ? Int((Double(caughtNow) / Double(stats.typed) * 100).rounded()) : 0
+        for line in [
+            tr("Сегодня: \(stats.typed) букв · поймано \(caughtNow) (\(share)%)", "Today: \(stats.typed) letters · \(caughtNow) caught (\(share)%)"),
+            tr("Скорость: \(stats.speed) зн/мин · рекорд \(stats.bestSpeed)", "Speed: \(stats.speed) chars/min · best \(stats.bestSpeed)"),
+            tr("Всего поймано: \(stats.totalCaught) · рекорд дня \(stats.bestCaught)", "Caught in total: \(stats.totalCaught) · best day \(stats.bestCaught)"),
+        ] {
+            let row = item(line, nil)
+            row.isEnabled = false
+            menu.addItem(row)
+        }
         menu.addItem(NSMenuItem.separator())
 
         let add = item(tr("Добавить котика", "Add a cat"), #selector(addCat(_:)))
@@ -220,26 +243,39 @@ extension AppDelegate: NSMenuDelegate {
         let remove = item(tr("Убрать котика", "Remove a cat"), #selector(removeCat(_:)))
         remove.isEnabled = scene.activeCount > 1
         menu.addItem(remove)
-        let workshop = item(tr("Сделать своего кота из фото…", "Make your own cat from a photo…"), #selector(openCatWorkshop(_:)))
+
+        let custom = scene.roster.filter { $0.breed.custom }
+        func catList(_ cats: [Cat], _ action: Selector) -> [NSMenuItem] {
+            return cats.map {
+                let row = item($0.breed.displayName, action)
+                row.representedObject = $0.breed.key
+                return row
+            }
+        }
+        let workshop = item(tr("Сделать из фото…", "Make from a photo…"), #selector(openCatWorkshop(_:)))
         workshop.isEnabled = scene.canAddCustomCat
-        menu.addItem(workshop)
+        var ownItems = [workshop, NSMenuItem.separator()]
+        let kitten = submenu(tr("Завести котёнка", "Adopt a kitten"), "kitten",
+                             items: catList(scene.roster.filter { !$0.breed.kitten }, #selector(adoptKitten(_:))))
+        kitten.isEnabled = scene.canAddCustomCat
+        ownItems.append(kitten)
+        if !custom.isEmpty {
+            ownItems.append(submenu(tr("Изменить", "Edit"), "editCat", items: catList(custom, #selector(editCustomCat(_:)))))
+            ownItems.append(submenu(tr("Удалить", "Delete"), "deleteCat", items: catList(custom, #selector(deleteCustomCat(_:)))))
+        }
+        menu.addItem(submenu(tr("Свои коты", "My cats"), "own", items: ownItems))
+        let gif = item(CatRecorder.shared.isRecording ? tr("Записываю…", "Recording…") : tr("Записать GIF (5 секунд)", "Record a GIF (5 seconds)"),
+                       #selector(recordGIF(_:)))
+        gif.isEnabled = !CatRecorder.shared.isRecording && !scene.paused
+        menu.addItem(gif)
         menu.addItem(NSMenuItem.separator())
 
         for cat in scene.roster {
             let breed = cat.breed
-            let row = item("\(breed.displayName) — \(breed.custom ? tr("мой кот", "my cat") : breed.displayKind)",
-                           #selector(toggleCat(_:)), on: scene.isEnabled(breed.key))
+            let kind = breed.kitten ? tr("котёнок", "kitten") : (breed.custom ? tr("мой кот", "my cat") : breed.displayKind)
+            let row = item("\(breed.displayName) — \(kind)", #selector(toggleCat(_:)), on: scene.isEnabled(breed.key))
             row.representedObject = breed.key
             menu.addItem(row)
-        }
-        let custom = scene.roster.filter { $0.breed.custom }
-        if !custom.isEmpty {
-            let delete = submenu(tr("Удалить своего кота", "Delete my cat"), "deleteCat", items: custom.map {
-                let row = item($0.breed.displayName, #selector(deleteCustomCat(_:)))
-                row.representedObject = $0.breed.key
-                return row
-            })
-            menu.addItem(delete)
         }
         menu.addItem(NSMenuItem.separator())
 
@@ -277,6 +313,20 @@ extension AppDelegate: NSMenuDelegate {
 
     @objc func openCatWorkshop(_: Any?) {
         CatWorkshop.shared.show()
+    }
+
+    @objc func adoptKitten(_ item: NSMenuItem) {
+        guard let id = item.representedObject as? String, let parent = CatScene.shared.roster.first(where: { $0.breed.key == id }) else { return }
+        CatScene.shared.addCustomCat(CustomCat.kitten(of: parent.breed))
+    }
+
+    @objc func editCustomCat(_ item: NSMenuItem) {
+        guard let id = item.representedObject as? String, let cat = CatScene.shared.roster.first(where: { $0.breed.key == id }) else { return }
+        CatWorkshop.shared.show(record: CustomCatStore.load().first { $0.id == id } ?? CustomCat(breed: cat.breed, id: id))
+    }
+
+    @objc func recordGIF(_: Any?) {
+        CatRecorder.shared.start()
     }
 
     @objc func setCatsNight(_ item: NSMenuItem) {

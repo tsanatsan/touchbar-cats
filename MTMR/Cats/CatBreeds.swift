@@ -29,14 +29,14 @@ struct RGB {
     }
 }
 
-enum Paint {
+enum Paint: Int, CaseIterable {
     case outline, fur, dark, belly, eye, eye2, pink, patch
-    case white, whisker, pupil, yarnA, yarnB
+    case white, whisker, pupil, yarnA, yarnB, hatRed, hatWhite
 }
 
 enum Part {
     case body, belly, head, ear, earIn, tuft, eye, eyeClosed, nose, mouth, muzzle, chest
-    case leg, paw, bean, tail, tailTip, whisker, blush, shine, pupil, yarn, ruff, tuftIn
+    case leg, paw, bean, tail, tailTip, whisker, blush, shine, pupil, yarn, ruff, tuftIn, hat
 }
 
 enum Coat: String, CaseIterable {
@@ -78,6 +78,8 @@ struct Breed {
     var ruff = false // fluffy collar around the face
     var id = "" // stable key for settings; built-in cats use their name
     var custom = false // made in the cat workshop from a photo
+    var kitten = false // small, follows its parent around
+    var parent: String? = nil
 
     var key: String { return id.isEmpty ? name : id }
 
@@ -89,6 +91,8 @@ struct Breed {
         case .pupil: return RGB(0x141418)
         case .yarnA: return RGB(0xF27A98)
         case .yarnB: return RGB(0xC84468)
+        case .hatRed: return RGB(0xD8343C)
+        case .hatWhite: return RGB(0xF6F2EC)
         case .eye2: return palette[.eye] ?? RGB(0xFFFFFF)
         default: return palette[.fur] ?? RGB(0xFFFFFF)
         }
@@ -218,7 +222,9 @@ struct CustomCat: Codable {
     var eyes: String
     var fat: Bool
     var ruff: Bool
-    var colors: [String: UInt32] // fur, dark, belly, patch, eye, pink
+    var colors: [String: UInt32] // fur, dark, belly, patch, eye, eye2, pink
+    var kitten: Bool? = nil
+    var parent: String? = nil
 
     var breed: Breed {
         func c(_ key: String, _ fallback: UInt32) -> UInt32 { return colors[key] ?? fallback }
@@ -234,10 +240,57 @@ struct CustomCat: Codable {
         if let patch = colors["patch"] { palette[.patch] = RGB(patch) }
         if let eye2 = colors["eye2"] { palette[.eye2] = RGB(eye2) }
         let coat = Coat(rawValue: self.coat) ?? .solid
-        return Breed(name: name, kind: coat.title, coat: coat, palette: palette, playful: 0.7, sleepy: fat ? 0.8 : 0.5,
-                     size: fat ? 1.05 : 1, fat: fat, ears: EarShape(rawValue: ears) ?? .normal,
-                     tail: TailShape(rawValue: tail) ?? .normal, speed: fat ? 0.8 : 1,
-                     eyes: EyeShape(rawValue: eyes) ?? .round, ruff: ruff, id: id, custom: true)
+        let small = kitten ?? false
+        return Breed(name: name, kind: small ? tr("котёнок", "kitten") : coat.title, coat: coat, palette: palette,
+                     playful: small ? 0.95 : 0.7, sleepy: fat ? 0.8 : (small ? 0.6 : 0.5),
+                     size: small ? 0.62 : (fat ? 1.05 : 1), fat: fat, ears: EarShape(rawValue: ears) ?? .normal,
+                     tail: TailShape(rawValue: tail) ?? .normal, speed: small ? 1.15 : (fat ? 0.8 : 1),
+                     eyes: EyeShape(rawValue: eyes) ?? .round, ruff: ruff, id: id, custom: true, kitten: small, parent: parent)
+    }
+
+    /// The same cat as a record: used for kittens and for sharing cats as files
+    init(breed: Breed, id: String = "custom-" + UUID().uuidString) {
+        self.id = id
+        name = breed.displayName
+        coat = breed.coat.rawValue
+        ears = breed.ears.rawValue
+        tail = breed.tail.rawValue
+        eyes = breed.eyes.rawValue
+        fat = breed.fat
+        ruff = breed.ruff
+        var colors: [String: UInt32] = [:]
+        let keys: [(String, Paint)] = [("fur", .fur), ("dark", .dark), ("belly", .belly), ("eye", .eye), ("pink", .pink)]
+        for (key, paint) in keys { colors[key] = breed.color(paint).hex }
+        if breed.palette[.patch] != nil { colors["patch"] = breed.color(.patch).hex }
+        if breed.palette[.eye2] != nil { colors["eye2"] = breed.color(.eye2).hex }
+        self.colors = colors
+        kitten = breed.kitten ? true : nil
+        parent = breed.parent
+    }
+
+    init(id: String, name: String, coat: String, ears: String, tail: String, eyes: String, fat: Bool, ruff: Bool,
+         colors: [String: UInt32], kitten: Bool? = nil, parent: String? = nil) {
+        self.id = id
+        self.name = name
+        self.coat = coat
+        self.ears = ears
+        self.tail = tail
+        self.eyes = eyes
+        self.fat = fat
+        self.ruff = ruff
+        self.colors = colors
+        self.kitten = kitten
+        self.parent = parent
+    }
+
+    /// A kitten that looks like its parent and follows it around
+    static func kitten(of parent: Breed) -> CustomCat {
+        var record = CustomCat(breed: parent)
+        record.name = tr("Котёнок", "Kitten") + " " + parent.displayName
+        record.kitten = true
+        record.fat = false
+        record.parent = parent.key
+        return record
     }
 }
 

@@ -56,6 +56,7 @@ for arch in $ARCHS; do
         -framework Cocoa -framework IOKit -framework CoreAudio -framework AudioToolbox \
         -framework DFRFoundation -framework MultitouchSupport \
         -framework CoreBrightness -framework DisplayServices \
+        -framework AVFoundation \
         -o "$OBJ/MTMR-$arch"
     binaries+=("$OBJ/MTMR-$arch")
 done

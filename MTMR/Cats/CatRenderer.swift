@@ -100,6 +100,7 @@ extension CatScene {
         ctx.setFillColor(red: 0, green: 0, blue: 0, alpha: 1)
         ctx.fill(CGRect(x: 0, y: 0, width: width, height: height))
         drawSky(ctx)
+        drawExtrasBack(ctx)
 
         let lights = flies.filter { $0.alive && $0.isLit }.map { (x: $0.x, y: $0.y, a: $0.a) }
         for f in flies where !f.isLit { drawFly(f, ctx) }
@@ -110,6 +111,7 @@ extension CatScene {
         }
         for cat in order { drawCat(cat, lights: lights, ctx) }
         for f in flies where f.isLit { drawFly(f, ctx) }
+        drawExtrasFront(ctx)
 
         for s in sparks {
             ctx.setFillColor(red: 230 / 255, green: 1, blue: 150 / 255, alpha: s.life)
@@ -188,6 +190,7 @@ extension CatScene {
 
         // the cat goes into a tiny bitmap and onto the bar with one draw call:
         // far cheaper than hundreds of rectangle fills per cat every frame
+        let palette = Paint.allCases.map { cat.breed.color($0) } // one lookup per color, not per pixel
         var pixels = [UInt8](repeating: 0, count: w * h * 4)
         for y in 0 ..< h {
             for x in 0 ..< w {
@@ -209,7 +212,7 @@ extension CatScene {
                     rim = max(rim, i * best)
                 }
                 amb = min(1, amb)
-                let base = cat.breed.color(k)
+                let base = palette[k.rawValue]
                 var col: RGB
                 var alpha: CGFloat = 1
                 switch k {
