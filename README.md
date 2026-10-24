@@ -91,11 +91,11 @@
 
 <img src="docs/yarn.gif" width="100%" alt="Коты гоняют клубок">
 
-Напишите «клубок» или дважды коснитесь пустого места на тачбаре: сверху упадёт клубок, и коты будут его гонять.
+Напишите «клубок» или дважды коснитесь тачбара в любом месте: туда сверху упадёт клубок, и коты будут его гонять. Смахните клубок пальцем, и он покатится. Смахнёте сильно — улетит за край тачбара.
 
 ### Игрушки
 
-- **Лазерная указка.** Задержите палец на пустом месте тачбара — появится красная точка. Ведите пальцем, и коты будут за ней гоняться.
+- **Лазерная указка.** Ведите пальцем по тачпаду, как обычно двигаете курсор, и прямо над тачпадом на тачбаре появится красная точка. Влево-вправо она ходит вместе с пальцем, а к дальнему краю тачпада поднимается вверх. Коты гоняются за ней и прыгают так высоко, как висит точка. Выключается в «Настройках» → «Лазер от тачпада».
 - **Мышка.** Иногда сама пробегает по краю, а ещё её можно позвать словом «мышка». Коты устраивают облаву; поймают не всегда.
 - **Коробка.** Напишите «коробка» — коты по очереди залезают внутрь, из коробки торчат только головы. Толстые Пончик и Ириска застревают.
 - **Миска.** Напишите «рыба» или «еда» — коты сбегаются к миске и едят.
@@ -107,6 +107,17 @@
 ### Времена года и праздники
 
 Зимой идёт снег, весной летят лепестки, летом порхают бабочки, осенью падают листья. На Новый год коты носят красные шапочки, на Хэллоуин у края стоят тыквы, светящиеся ночью, и летают летучие мыши, на День святого Валентина всплывают сердечки. Всё по дате на Mac, без интернета. Выключается в «Настройках».
+
+### Фоны
+
+«Котики» → **«Фон»**:
+- **чёрный** — как стекло тачбара;
+- **трава** — газон на весь тачбар, с клевером и ромашками;
+- **ковёр** — бордовый, с каймой и медальонами, как висел на стене у бабушки;
+- **город** — дома уходят вдаль, в дымку;
+- **пляж** — море до горизонта, острова, парусник, пальмы.
+
+Город и пляж живут по часам на Mac: рассвет, утро, полдень, день, закат, сумерки и ночь. Солнце встаёт слева и садится справа, на закате небо розовеет, ночью в домах зажигаются окна и фонари, а по воде бегут блики. Трава и ковёр ночью просто темнеют.
 
 ## Котики
 
@@ -162,6 +173,8 @@
 
 ## Слова и касания
 
+Слово срабатывает после пробела или просто после короткой паузы. Когда коты его поняли, буквы слова рассыпаются искрами.
+
 | Напечатайте | Что будет |
 |---|---|
 | любую букву | светлячок над её клавишей, коты охотятся |
@@ -181,21 +194,21 @@
 
 | Сделайте пальцем | Что будет |
 |---|---|
+| задержите или ведите палец | ближайшие коты подходят ласкаться и идут за пальцем |
 | медленно проведите над котом | вы его гладите: жмурится, сердечки, говорит своё имя |
-| быстро проведите | игривые коты гонятся за пальцем |
 | коснитесь спящего | вздрагивает и просыпается |
 | коснитесь мордочки у стекла | «буп» и румяные щёчки |
-| дважды коснитесь пустого места | падает клубок |
-| смахните клубок | клубок катится |
+| дважды коснитесь где угодно | туда падает клубок |
+| смахните клубок | клубок катится, можно выбить его даже у кота из зубов |
+| сильно смахните клубок | улетает за край |
 | дважды коснитесь клубка | кот уносит его в зубах |
-| задержите палец над котами | любимчик подходит сам |
-| задержите палец на пустом месте | лазерная указка |
+| ведите пальцем по тачпаду | лазерная указка над тачпадом |
 
 **Меню.** Нажмите на значок с котиком в строке меню. Там всего четыре пункта:
 
 - **«Обычный тачбар»** — то же, что ⌃⌥⌘T;
-- **«Котики»** — статистика за сегодня, добавить или убрать кота, **«Свои коты»** (сделать из фото, завести котёнка, изменить, удалить), запись GIF, выбрать, кто живёт на тачбаре, вечная ночь или вечный день;
-- **«Настройки»** — запуск при входе, тактильный отклик, полоса управления, жесты громкости и яркости, скрыть котов в текущей программе, сезоны и праздники, звуки, файл конфига и **язык: русский или английский**;
+- **«Котики»** — статистика за сегодня, добавить или убрать кота, **«Свои коты»** (сделать из фото, завести котёнка, изменить, удалить), запись GIF, выбрать, кто живёт на тачбаре, вечная ночь или вечный день, фон;
+- **«Настройки»** — запуск при входе, тактильный отклик, полоса управления, жесты громкости и яркости, скрыть котов в текущей программе, сезоны и праздники, звуки, лазер от тачпада, файл конфига и **язык: русский или английский**;
 - **«Выйти»**.
 
 ## Это безопасно?
@@ -282,11 +295,13 @@ make run
 
 - **Letters become fireflies.** Every key you press flies up on the Touch Bar right above its key and lights up the cats around it. The nearest playful cat stalks it, wiggles and pounces. At night (23:00–7:00) there are stars and a moon, and the cats' eyes glow.
 - **Type «кс» or `ks` again and again** — the Russian way to call a cat. With each one the cats come closer, turn to face you and press their noses and paws against the glass.
-- **Backspace** drops the last letter and a cat swats it away. Type `meow` and a cat answers. Type `yarn` or double-tap an empty spot to drop a ball of yarn.
-- **Touch them:** slowly move a finger over a cat to pet it, swipe fast to make them chase, tap a sleeping cat to wake it, tap a face at the glass to boop it.
-- **Ten cats:** ginger tabby, black, tuxedo, chubby calico, Siamese, chubby grey-and-white, hairless Sphynx, Maine Coon, Scottish Fold and an odd-eyed white fluffball. Your favourite one comes to your finger by itself.
+- **Backspace** drops the last letter and a cat swats it away. Type `meow` and a cat answers. Type `yarn` or double-tap anywhere to drop a ball of yarn; flick it to roll it, flick hard to throw it off the bar.
+- **Touch them:** rest or move a finger on the bar and the nearest cats come over to rub against it; slowly move it over a cat to pet it, tap a sleeping cat to wake it, tap a face at the glass to boop it, flick the ball of yarn (even out of a cat's mouth).
+- **Ten cats:** ginger tabby, black, tuxedo, chubby calico, Siamese, chubby grey-and-white, hairless Sphynx, Maine Coon, Scottish Fold and an odd-eyed white fluffball.
 - **Your own cat from a photo:** Cats → *Make your own cat from a photo…*, drop a picture and get a pixel twin with the same coat, colors and even odd eyes, then tweak it and move it onto the Touch Bar. Up to 18 cats in total. The photo is analyzed on your Mac with Apple Vision and never stored or sent.
-- **Toys and words:** hold a finger on an empty spot for a laser pointer; type `fish`/`food` (bowl), `box`, `mouse`, `hello`, `bad`, `sleep`, a cat's name, or `cat 25` for a 25-minute pomodoro.
+- **Laser pointer from the trackpad:** move the cursor and a red dot appears on the bar right above the trackpad, rising as your finger goes to the far edge. The cats chase it and leap as high as it is. Can be turned off in Settings.
+- **Words:** type `fish`/`food` (bowl), `box`, `mouse`, `hello`, `bad`, `sleep`, a cat's name, or `cat 25` for a 25-minute pomodoro. A word counts after a space or a short pause, and its letters burst into sparks when the cats get it.
+- **Backgrounds:** black, grass, a burgundy Soviet carpet, a city or a beach. The city and the beach follow the clock: dawn, noon, sunset and night, with the sun crossing the bar and windows lighting up after dark.
 - **Kittens** that follow their parent, **seasons and holidays** (snow, leaves, Santa hats, Halloween pumpkins), quiet **sounds** (off by default).
 - **Useful bits:** sleepy cats on low battery and a cat warming up by the charging port, typing stats in the menu, and a 5-second **GIF** of the Touch Bar saved to the Desktop.
 - **⌃⌥⌘T** swaps to the regular Touch Bar and back.

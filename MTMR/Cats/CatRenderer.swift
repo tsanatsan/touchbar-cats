@@ -99,7 +99,7 @@ extension CatScene {
     func draw(in ctx: CGContext) {
         ctx.setFillColor(red: 0, green: 0, blue: 0, alpha: 1)
         ctx.fill(CGRect(x: 0, y: 0, width: width, height: height))
-        drawSky(ctx)
+        CatBackground.shared.draw(self, in: ctx) { drawSky(ctx) }
         drawExtrasBack(ctx)
 
         let lights = flies.filter { $0.alive && $0.isLit }.map { (x: $0.x, y: $0.y, a: $0.a) }
@@ -270,7 +270,7 @@ extension CatScene {
             ctx.fill(CGRect(x: snap(f.x), y: snap(f.y + dy), width: 1, height: 1))
             return
         }
-        let p: CGFloat = 0.8
+        let p: CGFloat = 1.0
         ctx.saveGState()
         ctx.translateBy(x: f.x, y: f.y + dy)
         if f.rot != 0 { ctx.rotate(by: f.rot) }
@@ -282,7 +282,7 @@ extension CatScene {
 
     private func drawFly(_ f: Fly, _ ctx: CGContext) {
         if f.isLit {
-            let r: CGFloat = f.ch == nil ? 3.5 : 7
+            let r: CGFloat = f.ch == nil ? 3.5 : 8.5
             ctx.saveGState()
             ctx.setAlpha(f.a)
             ctx.drawRadialGradient(flyGlow, startCenter: CGPoint(x: f.x, y: f.y), startRadius: 0,

@@ -12,7 +12,7 @@ import Carbon
 import IOKit.ps
 
 enum CatMode {
-    case sit, walk, run, chase, hunt, crouch, jump, loaf, stretch, yawn, groom, munch
+    case sit, walk, run, hunt, crouch, jump, loaf, stretch, yawn, groom, munch
     case boop, boopGo, attend, front, swatGo, swat, ballChase, fetch, carry, come, enter, exit
     // toys, words and helpers (CatExtras.swift)
     case eatGo, eat, wave, sulk, boxGo, inBox, pomodoro, warmGo, warm
@@ -159,6 +159,7 @@ final class YarnBall {
     var vy: CGFloat = 0
     var rot: CGFloat = 0
     var held = false
+    var thrown = false // flicked hard: flies off the bar instead of bouncing back
 
     init(x: CGFloat, y: CGFloat, vx: CGFloat) {
         self.x = x
@@ -215,7 +216,9 @@ final class CatScene {
     private(set) var ksTarget: CGFloat = 0
     private(set) var t: CGFloat = 0
     private(set) var dark: CGFloat = 0
-    private(set) var paused: Bool
+    private(set) var paused: Bool {
+        didSet { syncTrackpad() }
+    }
     private var exitCompletion: (() -> Void)?
     private var exitDeadline: CGFloat = 0
     private var lastAdvance: CFTimeInterval = 0
@@ -369,6 +372,8 @@ final class CatScene {
     func setSystemAsleep(_ asleep: Bool) {
         systemAsleep = asleep
         lastAdvance = CACurrentMediaTime()
+        if !asleep { CatTrackpad.shared.restart() } // the trackpad is a new device after sleep
+        syncTrackpad()
     }
 
     enum Activity {
@@ -383,7 +388,7 @@ final class CatScene {
         if !flies.isEmpty || !sparks.isEmpty || !dust.isEmpty || !touches.isEmpty || exitCompletion != nil { return .lively }
         if effects.contains(where: { $0.kind != .z }) || !bubbles.isEmpty { return .lively }
         if let ball = ball, ball.held || abs(ball.vx) > 1 || ball.y < ballGroundY - 0.5 { return .lively }
-        let fast: [CatMode] = [.run, .chase, .hunt, .crouch, .jump, .attend, .swatGo, .swat, .ballChase, .fetch, .carry,
+        let fast: [CatMode] = [.run, .hunt, .crouch, .jump, .attend, .swatGo, .swat, .ballChase, .fetch, .carry,
                                .come, .enter, .exit]
         var strolling = false
         for cat in cats {
@@ -551,8 +556,23 @@ final class CatScene {
             typed = ""
             meowBack(x: x)
         } else if typed.hasSuffix("клубок") || typed.hasSuffix("yarn") {
+            dissolveWord(typed.hasSuffix("yarn") ? 4 : 6)
             typed = ""
             dropBall(at: x)
+        }
+    }
+
+    /// A recognized word: its letters burst into sparks, so it's clear the cats understood,
+    /// and the hunters are free to come to the bowl, the box or the ball
+    func dissolveWord(_ count: Int) {
+        var left = count
+        for f in flies.reversed() where left > 0 && f.alive && f.isLit && f.ch != nil && f.ch != "↵" {
+            left -= 1
+            f.alive = false
+            burst(f.x, f.y)
+            if let hunter = f.hunter, [.hunt, .crouch].contains(hunter.mode) { hunter.setMode(.sit, 0.6) }
+            f.hunter?.prey = nil
+            f.hunter = nil
         }
     }
 
@@ -627,7 +647,7 @@ final class CatScene {
     }
 
     private func spawnFly(_ ch: String?, x: CGFloat) {
-        let f = Fly(ch: ch, x: x, y: height + 6, ty: rnd(5, 11), life: ch == nil ? 1.2 : 2.3)
+        let f = Fly(ch: ch, x: x, y: height + 6, ty: rnd(6, 11), life: ch == nil ? 1.2 : 2.3)
         flies.append(f)
         if let ch = ch, ch != "↵", ksTarget == 0 {
             let hunters = cats.filter {
@@ -677,7 +697,7 @@ final class CatScene {
         let now = CACurrentMediaTime()
         touches[id] = TouchPoint(x: x, startX: x, lastMove: now, start: now)
         taps.append(x)
-        if let last = lastTap, now - last.time < 0.35, abs(last.x - x) < 22 {
+        if let last = lastTap, now - last.time < 0.4, abs(last.x - x) < 26 {
             doubleTaps.append(x)
             lastTap = nil
         } else {
@@ -691,12 +711,32 @@ final class CatScene {
         let dt = max(0.001, now - p.lastMove)
         let v = (x - p.x) / CGFloat(dt)
         p.vx = p.vx * 0.6 + v * 0.4
+        let fromX = p.x
         p.x = x
         p.lastMove = now
         touches[id] = p
-        if let ball = ball, !ball.held, abs(ball.x - x) < 7, abs(p.vx) > 40 {
-            ball.vx += clamp(p.vx * 0.5, -260, 260) * 0.3
+        flickBall(from: fromX, to: x, vx: abs(v) > abs(p.vx) ? v : p.vx)
+    }
+
+    /// A finger sweeping through the ball sends it rolling; a fast finger can even knock it out of a cat's mouth.
+    /// The whole path since the last event counts, so a quick flick doesn't skip over the ball.
+    private func flickBall(from: CGFloat, to: CGFloat, vx: CGFloat) {
+        guard let ball = ball, abs(vx) > 25 else { return }
+        if ball.held {
+            guard let holder = cats.first(where: { $0.carrying }), min(from, to) - 9 < holder.x, holder.x < max(from, to) + 9 else { return }
+            holder.carrying = false
+            holder.setMode(.sit, 1.5)
+            spawn(.bang, holder.x + holder.dir * 6, 9)
+            ball.held = false
+            ball.x = holder.x + holder.dir * 7
+            ball.y = ballGroundY - 6
+        } else if !(min(from, to) - 8 < ball.x && ball.x < max(from, to) + 8) {
+            return
         }
+        let push = clamp(vx * 0.45, -240, 240)
+        if abs(ball.vx) < abs(push) || ball.vx * push < 0 { ball.vx = push }
+        if abs(push) >= 140 { ball.thrown = true }
+        if ball.y >= ballGroundY - 1 { ball.vy = -min(30, abs(push) * 0.12) }
     }
 
     func touchEnded(id: Int) {
@@ -820,10 +860,11 @@ final class CatScene {
 
         if t - lastKs > 4 && ksTarget > 0 { ksTarget = max(0, ksTarget - dt * 0.3) }
 
+        // a double tap anywhere drops the ball right there (on the ball itself: a cat fetches it)
         for x in doubles {
             if let ball = ball, !ball.held, abs(ball.x - x) < 9 {
                 fetchBall()
-            } else if !cats.contains(where: { abs($0.x - x) < ($0.mode == .front ? 14 * frontScale($0) : 13) }) {
+            } else if !cats.contains(where: { $0.mode == .front && abs($0.x - x) < 14 * frontScale($0) }) {
                 dropBall(at: x)
             }
         }
@@ -832,11 +873,9 @@ final class CatScene {
         updateFlies(dt)
         updateExtras(dt, points: points)
 
-        let fastest = points.max(by: { abs(recentVx($0, now)) < abs(recentVx($1, now)) })
-        let favorite = roster.max(by: { $0.affection < $1.affection }).flatMap { $0.affection > 8 ? $0 : nil }
-
+        callToFingers(points, now: now)
         for cat in cats {
-            updateCat(cat, dt, now: now, taps: tapList, points: points, fastest: fastest, favorite: favorite)
+            updateCat(cat, dt, now: now, taps: tapList, points: points)
         }
         cats.removeAll { $0.removing && $0.mode == .exit && ($0.x < -20 || $0.x > width + 20) }
         if !deletedIds.isEmpty {
@@ -902,10 +941,18 @@ final class CatScene {
         if ball.y >= ballGroundY {
             ball.y = ballGroundY
             ball.vy = ball.vy > 20 ? -ball.vy * 0.4 : 0
-            ball.vx *= exp(-1.1 * dt)
+            ball.vx *= exp((ball.thrown ? -0.3 : -1.1) * dt)
         }
         ball.x += ball.vx * dt
         ball.rot += ball.vx * dt / 3
+        if ball.thrown && abs(ball.vx) < 30 { ball.thrown = false }
+        if ball.thrown {
+            if ball.x < -10 || ball.x > width + 10 {
+                self.ball = nil
+                for cat in cats where cat.mode == .ballChase || cat.mode == .fetch { cat.setMode(.sit, 1.5) }
+            }
+            return
+        }
         if ball.x < 4 {
             ball.x = 4
             ball.vx = abs(ball.vx) * 0.7
@@ -969,8 +1016,23 @@ final class CatScene {
         return s * sqrt(cat.breed.size)
     }
 
-    private func updateCat(_ cat: Cat, _ dt: CGFloat, now: CFTimeInterval, taps: [CGFloat], points: [TouchPoint],
-                           fastest: TouchPoint?, favorite: Cat?) {
+    /// A finger resting or moving on the bar: the two nearest cats come over to rub against it and be petted
+    private func callToFingers(_ points: [TouchPoint], now: CFTimeInterval) {
+        let free: [CatMode] = [.sit, .walk, .groom, .run, .boop, .yawn, .stretch]
+        for p in points where now - p.start > 0.2 {
+            if let ball = ball, !ball.held, abs(recentVx(p, now)) > 25, abs(ball.x - p.x) < 30 { continue } // flicking the ball
+            let coming = cats.filter { $0.mode == .come || ($0.petT > 0 && abs($0.x - p.x) < 16) }.count
+            guard coming < 2 else { continue }
+            let near = cats.filter { !$0.removing && free.contains($0.mode) && abs($0.x - p.x) > 14 && abs($0.x - p.x) < 320 }
+                .sorted { abs($0.x - p.x) < abs($1.x - p.x) }
+            for cat in near.prefix(2 - coming) {
+                cat.prey = nil
+                cat.setMode(.come, 99)
+            }
+        }
+    }
+
+    private func updateCat(_ cat: Cat, _ dt: CGFloat, now: CFTimeInterval, taps: [CGFloat], points: [TouchPoint]) {
         cat.mt += dt
         cat.look = max(0, cat.look - dt)
         cat.disturb = max(0, cat.disturb - dt * 0.5)
@@ -997,11 +1059,8 @@ final class CatScene {
                 spawn(.bang, cat.x + cat.dir * 6, 9)
                 cat.setMode(.stretch, 1.2)
                 cat.happy = 0
-            } else if cat.breed.playful > 0.55 && ![.jump, .hunt, .swatGo, .swat, .attend, .carry, .fetch].contains(cat.mode) {
-                cat.tx = tapX
-                cat.prey = nil
-                cat.setMode(.crouch, 0.35)
             } else if ![.jump, .attend, .carry].contains(cat.mode) {
+                cat.dir = tapX >= cat.x ? 1 : -1
                 spawn(.heart, cat.x + cat.dir * 5, 8)
                 cat.setMode(.sit, 2.5)
             }
@@ -1037,22 +1096,10 @@ final class CatScene {
             cat.happy = max(0, cat.happy - dt)
         }
 
-        // a fast swipe: playful cats give chase
-        if let f = fastest, abs(recentVx(f, now)) > 150, cat.breed.playful > 0.45, abs(f.x - cat.x) < 230, cat.happy <= 0,
-           [.sit, .walk, .groom, .run, .boop].contains(cat.mode), ksTarget == 0 {
-            cat.setMode(.chase, 99)
-        }
         // the yarn ball rolling by
         if let ball = ball, !ball.held, abs(ball.vx) > 14, cat.breed.playful > 0.5, abs(ball.x - cat.x) < 260,
            [.walk, .sit, .groom].contains(cat.mode), rnd(0, 1) < dt * 2 {
             cat.setMode(.ballChase, 99)
-        }
-        // the favorite cat comes to a resting finger
-        if let fav = favorite, fav === cat, [.sit, .walk, .groom].contains(cat.mode),
-           let p = points.first(where: { now - $0.start > 1 && abs(recentVx($0, now)) < 25 }),
-           abs(p.x - cat.x) > 25, rnd(0, 1) < dt * 0.6 {
-            cat.tx = p.x - (p.x > cat.x ? 10 : -10)
-            cat.setMode(.come, 99)
         }
         // look at the finger
         if [.sit, .groom].contains(cat.mode), let p = points.min(by: { abs($0.x - cat.x) < abs($1.x - cat.x) }),
@@ -1070,22 +1117,13 @@ final class CatScene {
         case .exit:
             moveTo(cat, cat.tx, 95, dt)
         case .come:
-            if moveTo(cat, cat.tx, 50, dt) {
+            if let p = points.min(by: { abs($0.x - cat.x) < abs($1.x - cat.x) }) {
+                cat.tx = clamp(p.x - (p.x > cat.x ? 6 : -6), 8, width - 8)
+            }
+            if moveTo(cat, cat.tx, abs(cat.tx - cat.x) > 60 ? 70 : 45, dt) {
                 cat.setMode(.sit, 3)
                 cat.happy = 1
                 spawn(.heart, cat.x - 2, 6)
-            }
-        case .chase:
-            guard let f = fastest, now - f.lastMove < 0.9 else {
-                cat.setMode(.sit, 2)
-                break
-            }
-            if abs(f.x - cat.x) < 22 {
-                cat.tx = f.x
-                cat.prey = nil
-                cat.setMode(.crouch, 0.45)
-            } else {
-                moveTo(cat, f.x, 72, dt)
             }
         case .attend:
             if ksTarget == 0 {
@@ -1167,6 +1205,7 @@ final class CatScene {
             }
             if abs(ball.x - cat.x) < 6 && ball.y >= ballGroundY - 1 {
                 ball.vx = (ball.x >= cat.x ? 1 : -1) * rnd(60, 130)
+                ball.thrown = false
                 ball.vy = -rnd(10, 25)
                 if Bool.random() {
                     cat.tx = ball.x + (ball.vx > 0 ? 30 : -30)

@@ -206,7 +206,7 @@ private func sidePose(_ cat: Cat, t: CGFloat) -> SpriteCanvas {
     let baseEyes: EyeState = cat.happy > 0 ? .happy : (cat.look > 0 ? .up : (blink ? .closed : .open))
 
     switch cat.mode {
-    case .walk, .run, .chase, .hunt, .attend, .come, .swatGo, .ballChase, .fetch, .carry, .enter, .exit, .boopGo,
+    case .walk, .run, .hunt, .attend, .come, .swatGo, .ballChase, .fetch, .carry, .enter, .exit, .boopGo,
          .eatGo, .boxGo, .warmGo, .laserChase, .mouseHunt:
         let bob = (cat.mode != .walk && cat.mode != .enter && frame % 2 == 1) ? 1 : 0
         let legTop: Int

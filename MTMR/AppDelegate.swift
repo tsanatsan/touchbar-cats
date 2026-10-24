@@ -107,6 +107,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         createMenu()
     }
 
+    @objc func toggleLaser(_: Any?) {
+        AppSettings.trackpadLaser.toggle()
+        CatScene.shared.syncTrackpad()
+        createMenu()
+    }
+
     @objc func setLanguage(_ item: NSMenuItem) {
         AppSettings.language = item.representedObject as? String ?? ""
         createMenu()
@@ -175,6 +181,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             NSMenuItem.separator(),
             item(tr("Сезоны и праздники", "Seasons and holidays"), #selector(toggleSeasons(_:)), on: AppSettings.seasons),
             item(tr("Звуки котов", "Cat sounds"), #selector(toggleSounds(_:)), on: AppSettings.catSounds),
+            item(tr("Лазер от тачпада", "Trackpad laser"), #selector(toggleLaser(_:)), on: AppSettings.trackpadLaser),
             NSMenuItem.separator(),
             item(tr("Открыть конфиг…", "Open config…"), #selector(openPreferences(_:))),
             item(tr("Загрузить пресет…", "Load preset…"), #selector(openPreset(_:))),
@@ -284,6 +291,12 @@ extension AppDelegate: NSMenuDelegate {
             night.tag = mode
             menu.addItem(night)
         }
+        let backgrounds: [NSMenuItem] = CatBackdrop.allCases.map {
+            let row = item($0.title, #selector(setCatsBackground(_:)), on: CatBackdrop.current == $0)
+            row.representedObject = $0.rawValue
+            return row
+        }
+        menu.addItem(submenu(tr("Фон", "Background"), "background", items: backgrounds))
     }
 
     @objc func openAccessibilitySettings(_: Any?) {
@@ -327,6 +340,10 @@ extension AppDelegate: NSMenuDelegate {
 
     @objc func recordGIF(_: Any?) {
         CatRecorder.shared.start()
+    }
+
+    @objc func setCatsBackground(_ item: NSMenuItem) {
+        CatBackdrop.current = (item.representedObject as? String).flatMap(CatBackdrop.init(rawValue:)) ?? .black
     }
 
     @objc func setCatsNight(_ item: NSMenuItem) {

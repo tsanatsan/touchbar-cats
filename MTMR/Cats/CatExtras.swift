@@ -40,10 +40,13 @@ final class CatBowl {
     init(x: CGFloat) { self.x = x }
 }
 
+/// The red dot follows a finger on the trackpad, right above it on the bar
 struct LaserDot {
     var active = false
     var x: CGFloat = 0
-    var touch = -1
+    var y: CGFloat = 0
+    var touchStart: (x: CGFloat, y: CGFloat)?
+    var lastMove: CGFloat = 0
 }
 
 struct Flake {
@@ -151,6 +154,8 @@ final class CatExtras {
 
     var word = ""
     var wordX: CGFloat = 0
+    var wordTime: CGFloat = 0
+    var wordDone = false // already recognized during a pause, the separator must not repeat it
     var previousWord = ""
 
     var batteryLevel: CGFloat = 1
@@ -173,6 +178,7 @@ extension CatScene {
     func appendWord(_ ch: String, x: CGFloat) {
         extras.word = String((extras.word + ch).suffix(24))
         extras.wordX = x
+        extras.wordTime = t
     }
 
     func wordBackspace() {
@@ -185,28 +191,43 @@ extension CatScene {
 
     func endWord(x: CGFloat) {
         let w = extras.word
+        let done = extras.wordDone
         extras.word = ""
+        extras.wordDone = false
         guard !w.isEmpty else { return }
-        let at = extras.wordX
         defer { extras.previousWord = w }
+        if !done { runWord(w) }
+    }
 
+    /// A word also counts when typing pauses right after it, no space needed
+    private func checkWordPause() {
+        guard !extras.word.isEmpty, !extras.wordDone, t - extras.wordTime > 0.7 else { return }
+        extras.wordDone = runWord(extras.word)
+    }
+
+    @discardableResult
+    private func runWord(_ w: String) -> Bool {
+        let at = extras.wordX
         if ["кот", "cat"].contains(extras.previousWord), let minutes = Int(w) {
             startPomodoro(minutes: minutes, x: at)
-            return
+            return true
         }
+        let action: (() -> Void)?
         switch w {
-        case "рыба", "рыбка", "еда", "кушать", "fish", "food": putBowl(at: at)
-        case "спать", "sleep": everyoneSleeps()
-        case "привет", "hello": everyoneWaves(at: at)
-        case "фу", "bad": everyoneSulks(at: at)
-        case "коробка", "box": putBox(at: at)
-        case "мышка", "мышь", "mouse": releaseMouse(towards: at)
+        case "рыба", "рыбка", "еда", "кушать", "fish", "food": action = { self.putBowl(at: at) }
+        case "спать", "sleep": action = { self.everyoneSleeps() }
+        case "привет", "hello": action = { self.everyoneWaves(at: at) }
+        case "фу", "bad": action = { self.everyoneSulks(at: at) }
+        case "коробка", "box": action = { self.putBox(at: at) }
+        case "мышка", "мышь", "mouse": action = { self.releaseMouse(towards: at) }
         default:
-            if let cat = cats.first(where: { $0.mode != .exit && !$0.removing &&
-                ($0.breed.name.lowercased() == w || $0.breed.displayName.lowercased() == w) }) {
-                callByName(cat, at: at)
-            }
+            action = cats.first(where: { $0.mode != .exit && !$0.removing &&
+                ($0.breed.name.lowercased() == w || $0.breed.displayName.lowercased() == w) }).map { cat in { self.callByName(cat, at: at) } }
         }
+        guard let run = action else { return false }
+        dissolveWord(w.count)
+        run()
+        return true
     }
 
     private func idleCats(_ near: CGFloat? = nil, within: CGFloat = 10_000) -> [Cat] {
@@ -317,8 +338,9 @@ extension CatScene {
             e.calendar = CatCalendar.now()
         }
         CatDecor.hats = AppSettings.seasons && e.calendar.newYear
+        checkWordPause()
         updateSeasons(dt)
-        updateLaser()
+        updateLaser(dt)
         updateMouse(dt)
         updateBox(dt)
         if let bowl = e.bowl {
@@ -341,24 +363,60 @@ extension CatScene {
         CatSounds.shared.tick()
     }
 
-    private func updateLaser() {
-        let now = CACurrentMediaTime()
-        if !extras.laser.active {
-            // hold a finger still on an empty spot: a red dot appears and the cats go crazy
-            for (id, p) in touches where now - p.start > 0.45 && abs(p.x - p.startX) < 6 &&
-                !cats.contains(where: { abs($0.x - p.startX) < 16 }) {
-                extras.laser = LaserDot(active: true, x: p.x, touch: id)
-                break
-            }
-        } else if let p = touches[extras.laser.touch] {
-            extras.laser.x = p.x
-        } else {
-            extras.laser.active = false
+    private func updateLaser(_ dt: CGFloat) {
+        syncTrackpad()
+        var laser = extras.laser
+        defer { extras.laser = laser }
+        // one finger moving the cursor; a click, a resting finger or a two-finger scroll is not a laser
+        guard AppSettings.trackpadLaser, let finger = CatTrackpad.shared.finger, finger.count == 1,
+              CACurrentMediaTime() - finger.time < 0.25 else {
+            laser.active = false
+            laser.touchStart = nil
+            return
         }
-        guard extras.laser.active else { return }
+        let target = laserPoint(finger)
+        guard let start = laser.touchStart else {
+            laser.touchStart = (finger.x, finger.y)
+            laser.lastMove = t
+            return
+        }
+        if !laser.active {
+            guard hypot(finger.x - start.x, finger.y - start.y) > 0.03 else { return }
+            laser.active = true
+            laser.lastMove = t
+            laser.x = target.x
+            laser.y = target.y
+        }
+        if hypot(target.x - laser.x, target.y - laser.y) > 0.3 { laser.lastMove = t }
+        laser.x += (target.x - laser.x) * min(1, dt * 30)
+        laser.y += (target.y - laser.y) * min(1, dt * 30)
+        if t - laser.lastMove > 3 {
+            laser.active = false // the finger just rests there
+            laser.touchStart = (finger.x, finger.y)
+            return
+        }
+        guard laser.active else { return }
         for cat in cats where [.sit, .walk, .groom, .run, .boop].contains(cat.mode) && cat.breed.playful > 0.35 &&
-            abs(cat.x - extras.laser.x) < 400 && Bool.random() {
+            abs(cat.x - laser.x) < 400 && Bool.random() {
             cat.setMode(.laserChase, 99)
+        }
+    }
+
+    /// The trackpad sits right under the middle of the keyboard: its width maps onto the part of the bar above it,
+    /// its depth onto the bar's height (the far edge is the top)
+    private func laserPoint(_ f: CatTrackpad.Finger) -> CGPoint {
+        let mm = CatTrackpad.shared.widthMM > 0 ? CatTrackpad.shared.widthMM : 160
+        let units = 7.25 + (f.x - 0.5) * mm / 19 // in key widths, like the keys above it
+        let x = clamp((units - 1.05) / (13.45 - 1.05), 0.01, 0.99) * width
+        let y = clamp(ground - 2 - f.y * (ground - 6), 3, ground - 2)
+        return CGPoint(x: x, y: y)
+    }
+
+    func syncTrackpad() {
+        if AppSettings.trackpadLaser && !paused && !systemAsleep {
+            CatTrackpad.shared.start()
+        } else {
+            CatTrackpad.shared.stop()
         }
     }
 
@@ -513,9 +571,11 @@ extension CatScene {
                 return
             }
             if abs(e.laser.x - cat.x) < 8 {
-                cat.tx = e.laser.x
+                // a pounce on the floor, or a leap as high as the dot
+                let h = clamp(ground - e.laser.y - 6, 4, 15)
                 cat.prey = nil
-                cat.setMode(.crouch, 0.15)
+                cat.jump = Jump(from: cat.x, to: clamp(e.laser.x + cat.dir * 3, 10, width - 10), t: 0, h: h)
+                cat.setMode(.jump, 0.5)
             } else {
                 moveTo(cat, e.laser.x, 95, dt)
             }
@@ -729,11 +789,15 @@ extension CatScene {
             }
         }
         if extras.laser.active {
-            let x = extras.laser.x, y = g - 2
-            ctx.setFillColor(red: 1, green: 0.23, blue: 0.19, alpha: 0.25)
-            ctx.fillEllipse(in: CGRect(x: x - 3, y: y - 3, width: 6, height: 6))
-            ctx.setFillColor(red: 1, green: 0.23, blue: 0.19, alpha: 1)
-            ctx.fillEllipse(in: CGRect(x: x - 0.9, y: y - 0.9, width: 1.8, height: 1.8))
+            let x = extras.laser.x, y = extras.laser.y
+            ctx.setFillColor(red: 1, green: 0.15, blue: 0.12, alpha: 0.22)
+            ctx.fillEllipse(in: CGRect(x: x - 4.5, y: y - 4.5, width: 9, height: 9))
+            ctx.setFillColor(red: 1, green: 0.2, blue: 0.16, alpha: 0.5)
+            ctx.fillEllipse(in: CGRect(x: x - 2.4, y: y - 2.4, width: 4.8, height: 4.8))
+            ctx.setFillColor(red: 1, green: 0.35, blue: 0.3, alpha: 1)
+            ctx.fillEllipse(in: CGRect(x: x - 1.4, y: y - 1.4, width: 2.8, height: 2.8))
+            ctx.setFillColor(red: 1, green: 0.85, blue: 0.8, alpha: 1)
+            ctx.fillEllipse(in: CGRect(x: x - 0.6, y: y - 0.6, width: 1.2, height: 1.2))
         }
     }
 }
