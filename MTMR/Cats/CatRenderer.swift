@@ -40,10 +40,70 @@ enum GlyphCache {
         cache[ch] = result
         return result
     }
+
+    private static var images: [String: CGImage] = [:]
+
+    /// The glyph as a tiny image in one color: a letter becomes one draw call instead of dozens of fills
+    static func image(_ ch: String, _ color: RGB) -> CGImage? {
+        let key = "\(ch)#\(color.key)"
+        if let cached = images[key] { return cached }
+        if images.count > 600 { images.removeAll() }
+        let c = color.p3
+        let px = 2, side = 14 * px // two device pixels per glyph pixel
+        var data = [UInt8](repeating: 0, count: side * side * 4)
+        for (gx, gy) in pixels(ch) {
+            for dy in 0 ..< px {
+                for dx in 0 ..< px {
+                    let i = (((gy + 7) * px + dy) * side + (gx + 7) * px + dx) * 4
+                    data[i] = UInt8(max(0, min(255, c.r)))
+                    data[i + 1] = UInt8(max(0, min(255, c.g)))
+                    data[i + 2] = UInt8(max(0, min(255, c.b)))
+                    data[i + 3] = 255
+                }
+            }
+        }
+        guard let provider = CGDataProvider(data: Data(data) as CFData),
+              let image = CGImage(width: side, height: side, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: side * 4, space: displaySpace,
+                                  bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                                  provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent) else { return nil }
+        images[key] = image
+        return image
+    }
+}
+
+/// The Touch Bar draws in Display P3. Images made in the same space are composited as they are;
+/// in any other space every pixel of every image would be converted on every frame.
+let displaySpace = CGColorSpace(name: CGColorSpace.displayP3) ?? CGColorSpaceCreateDeviceRGB()
+
+private var p3Cache: [Int: RGB] = [:]
+
+extension RGB {
+    var key: Int { return Int(r.rounded()) << 16 | Int(g.rounded()) << 8 | Int(b.rounded()) }
+
+    /// The same color expressed in Display P3 (both share the sRGB curve, only the primaries differ)
+    var p3: RGB {
+        let k = key
+        if let cached = p3Cache[k] { return cached }
+        func linear(_ v: CGFloat) -> CGFloat {
+            let c = v / 255
+            return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
+        }
+        func encoded(_ v: CGFloat) -> CGFloat {
+            let c = max(0, min(1, v))
+            return 255 * (c <= 0.0031308 ? c * 12.92 : 1.055 * pow(c, 1 / 2.4) - 0.055)
+        }
+        let lr = linear(r), lg = linear(g), lb = linear(b)
+        let out = RGB(r: encoded(0.8225 * lr + 0.1774 * lg),
+                      g: encoded(0.0332 * lr + 0.9669 * lg),
+                      b: encoded(0.0171 * lr + 0.0724 * lg + 0.9108 * lb))
+        if p3Cache.count > 4000 { p3Cache.removeAll() }
+        p3Cache[k] = out
+        return out
+    }
 }
 
 private let nightTint = RGB(r: 6, g: 9, b: 26)
-private let fireflyLight = RGB(r: 225, g: 255, b: 150)
+private let nightTintP3 = nightTint.p3
 private let rgbSpace = CGColorSpaceCreateDeviceRGB()
 
 private func gradient(_ c: RGB, _ alpha: CGFloat) -> CGGradient {
@@ -52,9 +112,16 @@ private func gradient(_ c: RGB, _ alpha: CGFloat) -> CGGradient {
     return CGGradient(colorsSpace: rgbSpace, colors: colors, locations: [0, 1])!
 }
 
-private let flyGlow = gradient(RGB(r: 214, g: 255, b: 120), 0.38)
-private let floorGlow = gradient(RGB(r: 214, g: 255, b: 120), 0.12)
+private var flyGlows: [Int: (fly: CGGradient, floor: CGGradient)] = [:]
 private var eyeGlows: [Int: CGGradient] = [:]
+
+private func glows(_ c: RGB) -> (fly: CGGradient, floor: CGGradient) {
+    if let g = flyGlows[c.key] { return g }
+    let g = (gradient(c, 0.38), gradient(c, 0.12))
+    flyGlows[c.key] = g
+    return g
+}
+
 
 private struct Star {
     let x: CGFloat
@@ -99,22 +166,24 @@ extension CatScene {
     func draw(in ctx: CGContext) {
         ctx.setFillColor(red: 0, green: 0, blue: 0, alpha: 1)
         ctx.fill(CGRect(x: 0, y: 0, width: width, height: height))
-        CatBackground.shared.draw(self, in: ctx) { drawSky(ctx) }
+        CatBackground.shared.draw(self, in: ctx, starfield: { [unowned self] c, k in self.drawStarfield(c, k) }, twinkle: { drawTwinkle(ctx) })
         drawExtrasBack(ctx)
 
-        let lights = flies.filter { $0.alive && $0.isLit }.map { (x: $0.x, y: $0.y, a: $0.a) }
-        for f in flies where !f.isLit { drawFly(f, ctx) }
+        let theme = LetterColor.current
+        let lights = flies.filter { $0.alive && $0.isLit }.map { (x: $0.x, y: $0.y, a: $0.a, c: theme.light($0.tint).p3) }
+        for f in flies where !f.isLit { drawFly(f, theme, ctx) }
         if let ball = ball, !ball.held { drawBall(ball, ctx) }
         let order = cats.sorted { a, b in
             let fa = a.mode == .front ? 1 + a.cl : 0, fb = b.mode == .front ? 1 + b.cl : 0
             return fa != fb ? fa < fb : a.jy < b.jy
         }
         for cat in order { drawCat(cat, lights: lights, ctx) }
-        for f in flies where f.isLit { drawFly(f, ctx) }
+        for f in flies where f.isLit { drawFly(f, theme, ctx) }
         drawExtrasFront(ctx)
 
-        for s in sparks {
-            ctx.setFillColor(red: 230 / 255, green: 1, blue: 150 / 255, alpha: s.life)
+        for (i, s) in sparks.enumerated() {
+            let c = theme == .firefly ? RGB(r: 230, g: 255, b: 150) : theme.glow(i).mixed(RGB(0xFFFFFF), 0.35)
+            ctx.setFillColor(red: c.r / 255, green: c.g / 255, blue: c.b / 255, alpha: s.life)
             ctx.fill(CGRect(x: snap(s.x), y: snap(s.y), width: 0.7, height: 0.7))
         }
         for d in dust {
@@ -125,12 +194,11 @@ extension CatScene {
         for e in effects { drawEffect(e, ctx) }
     }
 
-    private func drawSky(_ ctx: CGContext) {
-        guard dark > 0.05 else { return }
-        let k = dark / 0.62
+    /// Stars and the moon at rest, baked into the night sky image
+    private func drawStarfield(_ ctx: CGContext, _ k: CGFloat) {
+        ctx.setFillColor(red: 220 / 255, green: 230 / 255, blue: 1, alpha: 0.3 * k)
         for s in stars {
-            ctx.setFillColor(red: 220 / 255, green: 230 / 255, blue: 1, alpha: (0.25 + 0.35 * sin(t * 1.3 + s.phase)) * k)
-            ctx.fill(CGRect(x: snap(s.x * width), y: snap(1 + s.y * height), width: 0.6, height: 0.6))
+            ctx.fill(CGRect(x: snap(s.x * width), y: snap(1 + s.y * height), width: 0.5, height: 0.5))
         }
         ctx.setFillColor(red: 244 / 255, green: 236 / 255, blue: 200 / 255, alpha: k)
         let mx = width - 22, my: CGFloat = 4
@@ -143,9 +211,20 @@ extension CatScene {
         }
     }
 
+    /// A few stars sparkle on top of the baked ones every frame
+    private func drawTwinkle(_ ctx: CGContext) {
+        let k = dark / 0.62
+        for s in stars.prefix(18) {
+            let a = max(0, sin(t * 1.3 + s.phase)) * 0.35 * k
+            guard a > 0.03 else { continue }
+            ctx.setFillColor(red: 220 / 255, green: 230 / 255, blue: 1, alpha: a)
+            ctx.fill(CGRect(x: snap(s.x * width), y: snap(1 + s.y * height), width: 0.5, height: 0.5))
+        }
+    }
+
     // MARK: - Cats
 
-    private func drawCat(_ cat: Cat, lights: [(x: CGFloat, y: CGFloat, a: CGFloat)], _ ctx: CGContext) {
+    private func drawCat(_ cat: Cat, lights: [(x: CGFloat, y: CGFloat, a: CGFloat, c: RGB)], _ ctx: CGContext) {
         let (w, h, screen) = spriteScreen(cat, t: t, dark: dark)
         let front = cat.mode == .front
 
@@ -190,7 +269,7 @@ extension CatScene {
 
         // the cat goes into a tiny bitmap and onto the bar with one draw call:
         // far cheaper than hundreds of rectangle fills per cat every frame
-        let palette = Paint.allCases.map { cat.breed.color($0) } // one lookup per color, not per pixel
+        let palette = Paint.allCases.map { cat.breed.color($0).p3 } // one lookup per color, not per pixel
         var pixels = [UInt8](repeating: 0, count: w * h * 4)
         for y in 0 ..< h {
             for x in 0 ..< w {
@@ -198,12 +277,16 @@ extension CatScene {
                 let wx = left + (CGFloat(x) + 0.5) * sx, wy = top + (CGFloat(y) + 0.5) * sy
                 if wy - sy > height + 1 { continue }
                 var amb: CGFloat = 0, rim: CGFloat = 0
+                var lr: CGFloat = 0, lg: CGFloat = 0, lb: CGFloat = 0
                 for l in near {
                     let vx = l.x - wx, vy = l.y - wy
                     let d = hypot(vx, vy) + 0.01
                     if d > reachLight { continue }
                     let i = l.a * (1 - d / reachLight)
                     amb += i
+                    lr += l.c.r * i
+                    lg += l.c.g * i
+                    lb += l.c.b * i
                     var best: CGFloat = 0
                     if empty(x - 1, y) { best = max(best, -vx / d) }
                     if empty(x + 1, y) { best = max(best, vx / d) }
@@ -211,6 +294,7 @@ extension CatScene {
                     if empty(x, y + 1) { best = max(best, vy / d) }
                     rim = max(rim, i * best)
                 }
+                let light = amb > 0 ? RGB(r: lr / amb, g: lg / amb, b: lb / amb) : RGB(0xFFFFFF)
                 amb = min(1, amb)
                 let base = palette[k.rawValue]
                 var col: RGB
@@ -220,13 +304,13 @@ extension CatScene {
                     col = dark > 0 ? base.mixed(RGB(0xFFFFFF), 0.25) : (amb > 0.25 ? base.mixed(RGB(0xFFFFFF), 0.4) : base)
                     eyes.append((wx, wy, base))
                 case .white:
-                    col = base.mixed(nightTint, dark * 0.2)
+                    col = base.mixed(nightTintP3, dark * 0.2)
                 case .pupil:
                     col = base
                 default:
-                    col = base.mixed(nightTint, dark * (1 - 0.85 * amb))
-                    col = col.mixed(fireflyLight, amb * 0.12)
-                    col = col.mixed(fireflyLight, min(0.75, rim * 1.1))
+                    col = base.mixed(nightTintP3, dark * (1 - 0.85 * amb))
+                    col = col.mixed(light, amb * 0.12)
+                    col = col.mixed(light, min(0.75, rim * 1.1))
                     if k == .whisker { alpha = 0.5 }
                 }
                 let i = (y * w + x) * 4 // premultiplied RGBA
@@ -237,7 +321,7 @@ extension CatScene {
             }
         }
         if let provider = CGDataProvider(data: Data(pixels) as CFData),
-           let image = CGImage(width: w, height: h, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: w * 4, space: rgbSpace,
+           let image = CGImage(width: w, height: h, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: w * 4, space: displaySpace,
                                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
                                provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent) {
             ctx.saveGState()
@@ -265,24 +349,26 @@ extension CatScene {
     // MARK: - Fireflies, ball, bubbles, effects
 
     private func drawGlyph(_ f: Fly, color: RGB, alpha: CGFloat, dy: CGFloat, _ ctx: CGContext) {
-        ctx.setFillColor(red: color.r / 255, green: color.g / 255, blue: color.b / 255, alpha: alpha)
-        if f.glyph.isEmpty {
+        guard let ch = f.ch, let image = GlyphCache.image(ch, color) else {
+            ctx.setFillColor(red: color.r / 255, green: color.g / 255, blue: color.b / 255, alpha: alpha)
             ctx.fill(CGRect(x: snap(f.x), y: snap(f.y + dy), width: 1, height: 1))
             return
         }
-        let p: CGFloat = 1.0
         ctx.saveGState()
         ctx.translateBy(x: f.x, y: f.y + dy)
         if f.rot != 0 { ctx.rotate(by: f.rot) }
-        for (px, py) in f.glyph {
-            ctx.fill(CGRect(x: CGFloat(px) * p, y: CGFloat(py) * p, width: p + 0.02, height: p + 0.02))
-        }
+        ctx.scaleBy(x: 1, y: -1) // the view is flipped, images are not
+        ctx.setAlpha(alpha)
+        ctx.interpolationQuality = .none
+        ctx.draw(image, in: CGRect(x: -7, y: -7, width: 14, height: 14))
         ctx.restoreGState()
     }
 
-    private func drawFly(_ f: Fly, _ ctx: CGContext) {
+    private func drawFly(_ f: Fly, _ theme: LetterColor, _ ctx: CGContext) {
         if f.isLit {
             let r: CGFloat = f.ch == nil ? 3.5 : 8.5
+            let glow = theme.glow(f.tint)
+            let (flyGlow, floorGlow) = glows(glow)
             ctx.saveGState()
             ctx.setAlpha(f.a)
             ctx.drawRadialGradient(flyGlow, startCenter: CGPoint(x: f.x, y: f.y), startRadius: 0,
@@ -293,10 +379,10 @@ extension CatScene {
             ctx.restoreGState()
             if f.state == .rise {
                 for k in 1 ... 3 {
-                    drawGlyph(f, color: RGB(r: 214, g: 255, b: 120), alpha: 0.18 / CGFloat(k), dy: CGFloat(k) * 3, ctx)
+                    drawGlyph(f, color: glow, alpha: 0.18 / CGFloat(k), dy: CGFloat(k) * 3, ctx)
                 }
             }
-            drawGlyph(f, color: RGB(r: 242, g: 255, b: 190), alpha: f.a, dy: 0, ctx)
+            drawGlyph(f, color: theme.core(f.tint), alpha: f.a, dy: 0, ctx)
         } else {
             drawGlyph(f, color: RGB(r: 190, g: 200, b: 185), alpha: f.state == .fall ? 0.4 : 0.85, dy: 0, ctx)
         }

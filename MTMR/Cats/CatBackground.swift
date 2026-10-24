@@ -23,9 +23,20 @@ enum CatBackdrop: String, CaseIterable {
         }
     }
 
+    private static var cached: CatBackdrop?
+
+    /// Read once and kept: the renderer asks for it every frame
     static var current: CatBackdrop {
-        get { return CatBackdrop(rawValue: UserDefaults.standard.string(forKey: "cats.background") ?? "") ?? .black }
-        set { UserDefaults.standard.set(newValue.rawValue, forKey: "cats.background") }
+        get {
+            if let c = cached { return c }
+            let c = CatBackdrop(rawValue: UserDefaults.standard.string(forKey: "cats.background") ?? "") ?? .black
+            cached = c
+            return c
+        }
+        set {
+            cached = newValue
+            UserDefaults.standard.set(newValue.rawValue, forKey: "cats.background")
+        }
     }
 
     /// Stars and the moon belong to the views with a sky
@@ -105,67 +116,93 @@ private struct SkyTime {
     }
 }
 
+/// An image as wide as the bar, drawn top-down like the scene, in the Touch Bar's own color space
+/// (opaque ones are copied onto the bar instead of blended)
+func renderBarImage(_ w: CGFloat, _ h: CGFloat, opaque: Bool = false, _ body: (CGContext, CGFloat, CGFloat) -> Void) -> CGImage? {
+    let scale: CGFloat = 2
+    let alpha = opaque ? CGImageAlphaInfo.noneSkipLast : CGImageAlphaInfo.premultipliedLast
+    guard w > 0, let ctx = CGContext(data: nil, width: Int(w * scale), height: Int(h * scale), bitsPerComponent: 8, bytesPerRow: 0,
+                                     space: displaySpace, bitmapInfo: alpha.rawValue) else { return nil }
+    ctx.translateBy(x: 0, y: h * scale)
+    ctx.scaleBy(x: scale, y: -scale)
+    body(ctx, w, h)
+    return ctx.makeImage()
+}
+
+/// Draws such an image at the top of the flipped scene
+func drawBarImage(_ image: CGImage?, _ ctx: CGContext, _ w: CGFloat, _ h: CGFloat) {
+    guard let image = image else { return }
+    ctx.saveGState()
+    ctx.translateBy(x: 0, y: h)
+    ctx.scaleBy(x: 1, y: -1)
+    ctx.interpolationQuality = .none // pixel for pixel, nothing to smooth
+    ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+    ctx.restoreGState()
+}
+
 final class CatBackground {
     static let shared = CatBackground()
 
     private var key = ""
-    private var sky: CGImage?
-    private var scenery: CGImage?
+    private var back: CGImage? // the sky (with its stars at night), or everything when nothing goes in between
+    private var front: CGImage? // at night: the scenery in front of the twinkling stars
+    private var hourCheckAt: CFTimeInterval = 0
+    private var lastHour: CGFloat = 12
     private var glints: [(x: CGFloat, y: CGFloat, phase: CGFloat, bright: CGFloat)] = []
 
     private static let horizonY: CGFloat = 16 // where the sea meets the sky on the beach
     private static let shoreY: CGFloat = 25
 
-    /// Hour of the day for the scenery: the clock, or fixed by "always night" / "always day"
+    /// Hour of the day for the scenery: the clock (looked at twice a minute), or fixed by "always night" / "always day"
     private func hour(_ scene: CatScene) -> CGFloat {
         if scene.nightMode == 1 { return 0 }
         if scene.nightMode == 2 { return 13 }
-        let c = Calendar.current.dateComponents([.hour, .minute], from: Date())
-        return CGFloat(c.hour ?? 12) + CGFloat(c.minute ?? 0) / 60
+        let now = CACurrentMediaTime()
+        if now >= hourCheckAt {
+            hourCheckAt = now + 30
+            let c = Calendar.current.dateComponents([.hour, .minute], from: Date())
+            lastHour = CGFloat(c.hour ?? 12) + CGFloat(c.minute ?? 0) / 60
+        }
+        return lastHour
     }
 
-    /// Draws the sky, then `stars` (the scene's stars and moon), then the scenery in front of them
-    func draw(_ scene: CatScene, in ctx: CGContext, stars: () -> Void) {
+    /// Draws the scenery. At night the sky carries `starfield` (stars and moon at rest), then `twinkle` adds the
+    /// few stars that sparkle, then the scenery goes in front. Every image is redrawn only when something changes.
+    func draw(_ scene: CatScene, in ctx: CGContext, starfield: @escaping (CGContext, CGFloat) -> Void, twinkle: () -> Void) {
         let kind = CatBackdrop.current
-        guard kind != .black else {
-            stars()
-            return
-        }
-        let h = (hour(scene) * 6).rounded(.down) / 6 // ten-minute steps
-        let newKey = "\(kind)-\(Int(scene.width))-\(h)"
+        let k = scene.dark > 0.05 ? max(0.25, (scene.dark / 0.62 * 4).rounded() / 4) : 0 // star brightness in a few steps
+        let starry = kind.hasSky && k > 0
+        if kind == .black && !starry { return } // the glass is already black
+        let h = kind == .black ? 0 : (hour(scene) * 6).rounded(.down) / 6 // ten-minute steps
+        let newKey = "\(kind)-\(Int(scene.width))-\(h)-\(k)"
         if newKey != key {
             key = newKey
             let time = SkyTime(hour: h)
-            sky = render(scene.width, scene.height) { ctx, w, hh in self.drawSky(kind, time, ctx, w, hh) }
-            scenery = render(scene.width, scene.height) { ctx, w, hh in self.drawScenery(kind, time, ctx, w, hh) }
+            if starry {
+                back = renderBarImage(scene.width, scene.height, opaque: true) { c, w, hh in
+                    self.drawSky(kind, time, c, w, hh)
+                    starfield(c, k)
+                }
+                front = kind == .black ? nil : renderBarImage(scene.width, scene.height) { c, w, hh in
+                    self.drawScenery(kind, time, c, w, hh)
+                    self.fadeEdges(c, w, hh)
+                }
+            } else {
+                back = renderBarImage(scene.width, scene.height, opaque: true) { c, w, hh in
+                    self.drawSky(kind, time, c, w, hh)
+                    self.drawScenery(kind, time, c, w, hh)
+                    self.fadeEdges(c, w, hh)
+                }
+                front = nil
+            }
         }
-        blit(sky, ctx, scene.width, scene.height)
-        if kind.hasSky { stars() }
-        blit(scenery, ctx, scene.width, scene.height)
+        drawBarImage(back, ctx, scene.width, scene.height)
+        if starry { twinkle() }
+        drawBarImage(front, ctx, scene.width, scene.height)
         if kind == .beach { drawGlints(scene.t, ctx) }
-        fadeEdges(ctx, scene.width, scene.height)
     }
 
     // MARK: - Plumbing
-
-    private func blit(_ image: CGImage?, _ ctx: CGContext, _ w: CGFloat, _ h: CGFloat) {
-        guard let image = image else { return }
-        ctx.saveGState()
-        ctx.translateBy(x: 0, y: h) // the scene is drawn top-down
-        ctx.scaleBy(x: 1, y: -1)
-        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        ctx.restoreGState()
-    }
-
-    private func render(_ w: CGFloat, _ h: CGFloat, _ body: (CGContext, CGFloat, CGFloat) -> Void) -> CGImage? {
-        let scale: CGFloat = 2
-        guard w > 0, let ctx = CGContext(data: nil, width: Int(w * scale), height: Int(h * scale), bitsPerComponent: 8, bytesPerRow: 0,
-                                         space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
-        ctx.translateBy(x: 0, y: h * scale)
-        ctx.scaleBy(x: scale, y: -scale) // top-down, like the scene
-        body(ctx, w, h)
-        return ctx.makeImage()
-    }
 
     private let edgeFade = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
                                       colors: [CGColor(gray: 0, alpha: 1), CGColor(gray: 0, alpha: 0)] as CFArray, locations: [0, 1])!
@@ -216,6 +253,7 @@ final class CatBackground {
     // MARK: - Sky
 
     private func drawSky(_ kind: CatBackdrop, _ time: SkyTime, _ ctx: CGContext, _ w: CGFloat, _ h: CGFloat) {
+        if kind == .black { fill(ctx, Color(0x000000), 0, 0, w, h) }
         guard kind == .city || kind == .beach else { return }
         let horizon = kind == .beach ? CatBackground.horizonY : h - 3
         bands(ctx, time.top, time.horizon, 0, horizon, w)

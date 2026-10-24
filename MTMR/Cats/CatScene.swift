@@ -27,7 +27,6 @@ enum FlyState {
 
 final class Fly {
     let ch: String?
-    let glyph: [(Int, Int)]
     var x: CGFloat
     var y: CGFloat
     var ty: CGFloat
@@ -45,10 +44,10 @@ final class Fly {
     var knockT: CGFloat = 0
     weak var hunter: Cat?
     weak var swatter: Cat?
+    var tint = 0 // which rainbow color, when letters are rainbow
 
     init(ch: String?, x: CGFloat, y: CGFloat, ty: CGFloat, life: CGFloat) {
         self.ch = ch
-        glyph = ch.map { GlyphCache.pixels($0) } ?? []
         self.x = x
         self.y = y
         self.ty = ty
@@ -202,6 +201,7 @@ final class CatScene {
     private var deletedIds: Set<String> = []
     private(set) var cats: [Cat] = []
     var flies: [Fly] = []
+    private var flyCount = 0
     var effects: [Effect] = []
     var sparks: [Particle] = []
     var dust: [Particle] = []
@@ -648,6 +648,10 @@ final class CatScene {
 
     private func spawnFly(_ ch: String?, x: CGFloat) {
         let f = Fly(ch: ch, x: x, y: height + 6, ty: rnd(6, 11), life: ch == nil ? 1.2 : 2.3)
+        if ch != nil {
+            flyCount += 1
+            f.tint = flyCount
+        }
         flies.append(f)
         if let ch = ch, ch != "↵", ksTarget == 0 {
             let hunters = cats.filter {

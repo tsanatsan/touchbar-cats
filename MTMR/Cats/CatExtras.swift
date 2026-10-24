@@ -368,7 +368,7 @@ extension CatScene {
         var laser = extras.laser
         defer { extras.laser = laser }
         // one finger moving the cursor; a click, a resting finger or a two-finger scroll is not a laser
-        guard AppSettings.trackpadLaser, let finger = CatTrackpad.shared.finger, finger.count == 1,
+        guard CatTrackpad.enabled, let finger = CatTrackpad.shared.finger, finger.count == 1,
               CACurrentMediaTime() - finger.time < 0.25 else {
             laser.active = false
             laser.touchStart = nil
@@ -413,7 +413,7 @@ extension CatScene {
     }
 
     func syncTrackpad() {
-        if AppSettings.trackpadLaser && !paused && !systemAsleep {
+        if CatTrackpad.enabled && !paused && !systemAsleep {
             CatTrackpad.shared.start()
         } else {
             CatTrackpad.shared.stop()

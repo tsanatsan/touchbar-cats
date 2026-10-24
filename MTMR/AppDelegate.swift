@@ -108,7 +108,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func toggleLaser(_: Any?) {
-        AppSettings.trackpadLaser.toggle()
+        CatTrackpad.enabled.toggle()
         CatScene.shared.syncTrackpad()
         createMenu()
     }
@@ -181,7 +181,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             NSMenuItem.separator(),
             item(tr("Сезоны и праздники", "Seasons and holidays"), #selector(toggleSeasons(_:)), on: AppSettings.seasons),
             item(tr("Звуки котов", "Cat sounds"), #selector(toggleSounds(_:)), on: AppSettings.catSounds),
-            item(tr("Лазер от тачпада", "Trackpad laser"), #selector(toggleLaser(_:)), on: AppSettings.trackpadLaser),
+            item(tr("Лазер от тачпада", "Trackpad laser"), #selector(toggleLaser(_:)), on: CatTrackpad.enabled),
             NSMenuItem.separator(),
             item(tr("Открыть конфиг…", "Open config…"), #selector(openPreferences(_:))),
             item(tr("Загрузить пресет…", "Load preset…"), #selector(openPreset(_:))),
@@ -297,6 +297,13 @@ extension AppDelegate: NSMenuDelegate {
             return row
         }
         menu.addItem(submenu(tr("Фон", "Background"), "background", items: backgrounds))
+        let letterColors: [NSMenuItem] = LetterColor.allCases.map {
+            let row = item($0.title, #selector(setLetterColor(_:)), on: LetterColor.current == $0)
+            row.representedObject = $0.rawValue
+            row.image = $0.swatch
+            return row
+        }
+        menu.addItem(submenu(tr("Цвет букв", "Letter color"), "letterColor", items: letterColors))
     }
 
     @objc func openAccessibilitySettings(_: Any?) {
@@ -340,6 +347,10 @@ extension AppDelegate: NSMenuDelegate {
 
     @objc func recordGIF(_: Any?) {
         CatRecorder.shared.start()
+    }
+
+    @objc func setLetterColor(_ item: NSMenuItem) {
+        LetterColor.current = (item.representedObject as? String).flatMap(LetterColor.init(rawValue:)) ?? .firefly
     }
 
     @objc func setCatsBackground(_ item: NSMenuItem) {

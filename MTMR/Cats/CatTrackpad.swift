@@ -13,6 +13,11 @@ import QuartzCore
 final class CatTrackpad {
     static let shared = CatTrackpad()
 
+    /// The "Trackpad laser" setting, kept in memory: it's checked every frame
+    static var enabled = AppSettings.trackpadLaser {
+        didSet { AppSettings.trackpadLaser = enabled }
+    }
+
     struct Finger {
         var x: CGFloat // 0 left ... 1 right
         var y: CGFloat // 0 near edge ... 1 far edge
