@@ -39,7 +39,7 @@ enum Part {
     case leg, paw, bean, tail, tailTip, whisker, blush, shine, pupil, yarn, ruff, tuftIn
 }
 
-enum Coat {
+enum Coat: String, CaseIterable {
     case tabby // stripes
     case solid
     case tuxedo // white chest and paws
@@ -49,15 +49,15 @@ enum Coat {
     case skin // hairless sphynx: wrinkles instead of fur pattern
 }
 
-enum EyeShape {
+enum EyeShape: String, CaseIterable {
     case round, big, almond
 }
 
-enum EarShape {
+enum EarShape: String, CaseIterable {
     case normal, big, folded, tufted
 }
 
-enum TailShape {
+enum TailShape: String, CaseIterable {
     case normal, bushy, thin
 }
 
@@ -76,6 +76,10 @@ struct Breed {
     var eyes = EyeShape.round
     var lids = false // sleepy half-closed eyelids until excited
     var ruff = false // fluffy collar around the face
+    var id = "" // stable key for settings; built-in cats use their name
+    var custom = false // made in the cat workshop from a photo
+
+    var key: String { return id.isEmpty ? name : id }
 
     func color(_ paint: Paint) -> RGB {
         if let c = palette[paint] { return c }
@@ -98,6 +102,9 @@ private func palette(o: UInt32, f: UInt32, d: UInt32, b: UInt32, e: UInt32, p: U
     if let e2 = e2 { result[.eye2] = RGB(e2) }
     return result
 }
+
+/// Ten built-in cats plus up to eight cats made from photos
+let maxCats = 18
 
 let catBreeds: [Breed] = [
     Breed(name: "Рыжик", kind: "рыжий полосатый", coat: .tabby,
@@ -145,4 +152,104 @@ private let englishKinds = [
 extension Breed {
     var displayName: String { return tr(name, englishNames[name] ?? name) }
     var displayKind: String { return tr(kind, englishKinds[name] ?? kind) }
+}
+
+extension RGB {
+    var hex: UInt32 {
+        return UInt32(max(0, min(255, r.rounded()))) << 16 | UInt32(max(0, min(255, g.rounded()))) << 8 | UInt32(max(0, min(255, b.rounded())))
+    }
+
+    var luminance: CGFloat { return (0.299 * r + 0.587 * g + 0.114 * b) / 255 }
+}
+
+extension Coat {
+    var title: String {
+        switch self {
+        case .tabby: return tr("полосатый", "tabby")
+        case .solid: return tr("однотонный", "solid")
+        case .tuxedo: return tr("смокинг", "tuxedo")
+        case .calico: return tr("трёхцветный", "calico")
+        case .points: return tr("сиамский", "colorpoint")
+        case .bicolor: return tr("с белым", "bicolor")
+        case .skin: return tr("лысый", "hairless")
+        }
+    }
+}
+
+extension EarShape {
+    var title: String {
+        switch self {
+        case .normal: return tr("обычные", "normal")
+        case .big: return tr("большие", "big")
+        case .folded: return tr("вислые", "folded")
+        case .tufted: return tr("с кисточками", "tufted")
+        }
+    }
+}
+
+extension TailShape {
+    var title: String {
+        switch self {
+        case .normal: return tr("обычный", "normal")
+        case .bushy: return tr("пушистый", "bushy")
+        case .thin: return tr("тонкий", "thin")
+        }
+    }
+}
+
+extension EyeShape {
+    var title: String {
+        switch self {
+        case .round: return tr("круглые", "round")
+        case .big: return tr("большие", "big")
+        case .almond: return tr("миндалевидные", "almond")
+        }
+    }
+}
+
+// MARK: - Cats made from photos
+
+struct CustomCat: Codable {
+    var id: String
+    var name: String
+    var coat: String
+    var ears: String
+    var tail: String
+    var eyes: String
+    var fat: Bool
+    var ruff: Bool
+    var colors: [String: UInt32] // fur, dark, belly, patch, eye, pink
+
+    var breed: Breed {
+        func c(_ key: String, _ fallback: UInt32) -> UInt32 { return colors[key] ?? fallback }
+        let fur = RGB(c("fur", 0x999999))
+        let dark = RGB(c("dark", fur.mixed(RGB(0x000000), 0.4).hex))
+        // dark cats get a light rim so they stay visible on the black Touch Bar
+        let outline = fur.luminance < 0.22 ? fur.mixed(RGB(0xFFFFFF), 0.38) : dark.mixed(RGB(0x000000), 0.5)
+        var palette: [Paint: RGB] = [
+            .outline: outline, .fur: fur, .dark: dark,
+            .belly: RGB(c("belly", fur.mixed(RGB(0xFFFFFF), 0.5).hex)),
+            .eye: RGB(c("eye", 0xE0B040)), .pink: RGB(c("pink", 0xFF9AA8)),
+        ]
+        if let patch = colors["patch"] { palette[.patch] = RGB(patch) }
+        if let eye2 = colors["eye2"] { palette[.eye2] = RGB(eye2) }
+        let coat = Coat(rawValue: self.coat) ?? .solid
+        return Breed(name: name, kind: coat.title, coat: coat, palette: palette, playful: 0.7, sleepy: fat ? 0.8 : 0.5,
+                     size: fat ? 1.05 : 1, fat: fat, ears: EarShape(rawValue: ears) ?? .normal,
+                     tail: TailShape(rawValue: tail) ?? .normal, speed: fat ? 0.8 : 1,
+                     eyes: EyeShape(rawValue: eyes) ?? .round, ruff: ruff, id: id, custom: true)
+    }
+}
+
+enum CustomCatStore {
+    private static let key = "cats.custom"
+
+    static func load() -> [CustomCat] {
+        guard let data = UserDefaults.standard.data(forKey: key) else { return [] }
+        return (try? JSONDecoder().decode([CustomCat].self, from: data)) ?? []
+    }
+
+    static func save(_ cats: [CustomCat]) {
+        if let data = try? JSONEncoder().encode(cats) { UserDefaults.standard.set(data, forKey: key) }
+    }
 }

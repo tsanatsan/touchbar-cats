@@ -215,17 +215,31 @@ extension AppDelegate: NSMenuDelegate {
         menu.addItem(NSMenuItem.separator())
 
         let add = item(tr("Добавить котика", "Add a cat"), #selector(addCat(_:)))
-        add.isEnabled = scene.activeCount < catBreeds.count
+        add.isEnabled = scene.activeCount < scene.roster.count
         menu.addItem(add)
         let remove = item(tr("Убрать котика", "Remove a cat"), #selector(removeCat(_:)))
         remove.isEnabled = scene.activeCount > 1
         menu.addItem(remove)
+        let workshop = item(tr("Сделать своего кота из фото…", "Make your own cat from a photo…"), #selector(openCatWorkshop(_:)))
+        workshop.isEnabled = scene.canAddCustomCat
+        menu.addItem(workshop)
         menu.addItem(NSMenuItem.separator())
 
-        for (i, breed) in catBreeds.enumerated() {
-            let cat = item("\(breed.displayName) — \(breed.displayKind)", #selector(toggleCat(_:)), on: scene.isEnabled(i))
-            cat.tag = i
-            menu.addItem(cat)
+        for cat in scene.roster {
+            let breed = cat.breed
+            let row = item("\(breed.displayName) — \(breed.custom ? tr("мой кот", "my cat") : breed.displayKind)",
+                           #selector(toggleCat(_:)), on: scene.isEnabled(breed.key))
+            row.representedObject = breed.key
+            menu.addItem(row)
+        }
+        let custom = scene.roster.filter { $0.breed.custom }
+        if !custom.isEmpty {
+            let delete = submenu(tr("Удалить своего кота", "Delete my cat"), "deleteCat", items: custom.map {
+                let row = item($0.breed.displayName, #selector(deleteCustomCat(_:)))
+                row.representedObject = $0.breed.key
+                return row
+            })
+            menu.addItem(delete)
         }
         menu.addItem(NSMenuItem.separator())
 
@@ -252,7 +266,17 @@ extension AppDelegate: NSMenuDelegate {
     }
 
     @objc func toggleCat(_ item: NSMenuItem) {
-        CatScene.shared.setEnabled(item.tag, item.state != .on)
+        guard let id = item.representedObject as? String else { return }
+        CatScene.shared.setEnabled(id, item.state != .on)
+    }
+
+    @objc func deleteCustomCat(_ item: NSMenuItem) {
+        guard let id = item.representedObject as? String else { return }
+        CatScene.shared.deleteCustomCat(id)
+    }
+
+    @objc func openCatWorkshop(_: Any?) {
+        CatWorkshop.shared.show()
     }
 
     @objc func setCatsNight(_ item: NSMenuItem) {

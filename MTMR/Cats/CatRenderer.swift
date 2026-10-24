@@ -68,6 +68,33 @@ private let stars: [Star] = (0 ..< 90).map { _ in
 
 private func snap(_ v: CGFloat) -> CGFloat { return (v * 2).rounded() / 2 }
 
+/// Sprite colors with coat pattern and outline, mirrored when a side-view cat faces left
+func spriteScreen(_ cat: Cat, t: CGFloat, dark: CGFloat) -> (w: Int, h: Int, paints: [Paint?]) {
+    let c = catPose(cat, t: t, dark: dark)
+    let w = c.w, h = c.h
+    var cols = [Paint?](repeating: nil, count: w * h)
+    for y in 0 ..< h {
+        for x in 0 ..< w {
+            if let cell = c.cells[y * w + x] { cols[y * w + x] = coatPaint(cat, cell, x: x, y: y, canvas: c) }
+        }
+    }
+    let flip = cat.mode != .front && cat.dir < 0
+    var screen = [Paint?](repeating: nil, count: w * h)
+    func solid(_ v: Paint?) -> Bool { return v != nil && v != .whisker }
+    for y in 0 ..< h {
+        for x in 0 ..< w {
+            var k = cols[y * w + x]
+            if k == nil {
+                let n = (x > 0 && solid(cols[y * w + x - 1])) || (x < w - 1 && solid(cols[y * w + x + 1])) ||
+                    (y > 0 && solid(cols[(y - 1) * w + x])) || (y < h - 1 && solid(cols[(y + 1) * w + x]))
+                if n { k = .outline }
+            }
+            if let k = k { screen[y * w + (flip ? w - 1 - x : x)] = k }
+        }
+    }
+    return (w, h, screen)
+}
+
 extension CatScene {
     func draw(in ctx: CGContext) {
         ctx.setFillColor(red: 0, green: 0, blue: 0, alpha: 1)
@@ -117,29 +144,8 @@ extension CatScene {
     // MARK: - Cats
 
     private func drawCat(_ cat: Cat, lights: [(x: CGFloat, y: CGFloat, a: CGFloat)], _ ctx: CGContext) {
-        let c = catPose(cat, t: t, dark: dark)
-        let w = c.w, h = c.h
-        var cols = [Paint?](repeating: nil, count: w * h)
-        for y in 0 ..< h {
-            for x in 0 ..< w {
-                if let cell = c.cells[y * w + x] { cols[y * w + x] = coatPaint(cat, cell, x: x, y: y, canvas: c) }
-            }
-        }
+        let (w, h, screen) = spriteScreen(cat, t: t, dark: dark)
         let front = cat.mode == .front
-        let flip = !front && cat.dir < 0
-        var screen = [Paint?](repeating: nil, count: w * h)
-        func solid(_ v: Paint?) -> Bool { return v != nil && v != .whisker }
-        for y in 0 ..< h {
-            for x in 0 ..< w {
-                var k = cols[y * w + x]
-                if k == nil {
-                    let n = (x > 0 && solid(cols[y * w + x - 1])) || (x < w - 1 && solid(cols[y * w + x + 1])) ||
-                        (y > 0 && solid(cols[(y - 1) * w + x])) || (y < h - 1 && solid(cols[(y + 1) * w + x]))
-                    if n { k = .outline }
-                }
-                if let k = k { screen[y * w + (flip ? w - 1 - x : x)] = k }
-            }
-        }
 
         var sx: CGFloat, sy: CGFloat, left: CGFloat, top: CGFloat
         if front {

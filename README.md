@@ -28,6 +28,7 @@
   <a href="#как-установить">Как установить</a> ·
   <a href="#что-умеют-котики">Что умеют котики</a> ·
   <a href="#котики">Знакомьтесь</a> ·
+  <a href="#свой-кот-из-фото">Свой кот из фото</a> ·
   <a href="#откуда-это">Откуда это</a> ·
   <a href="#english">English</a>
 </p>
@@ -113,6 +114,25 @@
 
 Коты гуляют, умываются, спят клубком, потягиваются, зевают и трутся носами друг о друга. Того, кого вы гладите чаще всех, программа запоминает, и он сам подходит к пальцу.
 
+## Свой кот из фото
+
+<p align="center">
+  <img src="docs/workshop.png" width="80%" alt="Окно «Мастерская котов»: место для фото, живое превью пиксельного кота и настройки окраса">
+</p>
+
+Поселите на тачбар своего настоящего кота. Значок с котиком в строке меню → **«Котики»** → **«Сделать своего кота из фото…»**:
+
+1. Перетащите в окно фотографию своего кота или нажмите «Выбрать фото…».
+2. Через секунду справа появится его пиксельный двойник: гуляет сбоку и смотрит из-за стекла.
+3. Если что-то не так, поправьте: имя, окрас, уши, хвост, глаза, цвета (у каждого есть пипетка), «толстый» и «пушистый воротник».
+4. Нажмите **«Поселить на тачбар»** — кот забежит с края и сразу начнёт охотиться на буквы вместе со всеми.
+
+Программа сама находит кота на фото, вырезает его от фона, берёт цвет шерсти, глаз и носа и угадывает окрас: полосатый, трёхцветный, сиамский, смокинг, с белым, белый с пятнами или однотонный. Замечает даже глаза разного цвета. Вислоухость, лысость и толщину по одному фото не угадать — это переключатели в окне.
+
+Всего на тачбаре может жить **до 18 котов**: десять встроенных и восемь своих. Удалить своего кота можно в «Котики» → «Удалить своего кота».
+
+Фото разбирается прямо на вашем Mac встроенными средствами macOS (Apple Vision), никуда не отправляется и нигде не сохраняется. Программа запоминает только результат: цвета, окрас и имя. Вырезание кота от фона работает на macOS 14 и новее.
+
 ## Слова и касания
 
 | Напечатайте | Что будет |
@@ -138,7 +158,7 @@
 **Меню.** Нажмите на значок с котиком в строке меню. Там всего четыре пункта:
 
 - **«Обычный тачбар»** — то же, что ⌃⌥⌘T;
-- **«Котики»** — сколько букв поймано сегодня, добавить или убрать кота, выбрать, кто из десяти живёт на тачбаре, вечная ночь или вечный день;
+- **«Котики»** — сколько букв поймано сегодня, добавить или убрать кота, сделать своего кота из фото, выбрать, кто живёт на тачбаре, вечная ночь или вечный день;
 - **«Настройки»** — запуск при входе, тактильный отклик, полоса управления, жесты громкости и яркости, скрыть котов в текущей программе, файл конфига и **язык: русский или английский**;
 - **«Выйти»**.
 
@@ -148,6 +168,7 @@
 - В интернет программа не ходит вообще.
 - В полях для паролей macOS сама прячет нажатия от всех программ, так что пароли на тачбар не попадут.
 - Сочетания с ⌘, ⌃ и ⌥ светлячками не становятся.
+- Фото для своего кота разбирается прямо на Mac и не сохраняется.
 - Весь код открыт, его можно прочитать в этом репозитории.
 
 ## Откуда это
@@ -199,7 +220,7 @@ make run
 
 **Где что лежит:**
 
-- `MTMR/Cats/` — коты: породы и окрасы, пиксельные позы, поведение, отрисовка со светом от букв, элемент тачбара;
+- `MTMR/Cats/` — коты: породы и окрасы, пиксельные позы, поведение, отрисовка со светом от букв, элемент тачбара, мастерская своих котов и разбор фото через Vision;
 - `MTMR/Widgets/ControlStripSliderItem.swift` — громкость и яркость в стиле Apple;
 - `MTMR/GlobalHotKey.swift` — сочетание ⌃⌥⌘T;
 - `build-local.sh` — сборка без Xcode.
@@ -227,6 +248,7 @@ make run
 - **Backspace** drops the last letter and a cat swats it away. Type `meow` and a cat answers. Type `yarn` or double-tap an empty spot to drop a ball of yarn.
 - **Touch them:** slowly move a finger over a cat to pet it, swipe fast to make them chase, tap a sleeping cat to wake it, tap a face at the glass to boop it.
 - **Ten cats:** ginger tabby, black, tuxedo, chubby calico, Siamese, chubby grey-and-white, hairless Sphynx, Maine Coon, Scottish Fold and an odd-eyed white fluffball. Your favourite one comes to your finger by itself.
+- **Your own cat from a photo:** Cats → *Make your own cat from a photo…*, drop a picture and get a pixel twin with the same coat, colors and even odd eyes, then tweak it and move it onto the Touch Bar. Up to 18 cats in total. The photo is analyzed on your Mac with Apple Vision and never stored or sent.
 - **⌃⌥⌘T** swaps to the regular Touch Bar and back.
 
 **Install:** download the zip, unzip it, drag **TouchBar Cats** into Applications and open it. macOS will say it can't verify the app — it's free and not notarized — so press **Done**, then go to **System Settings → Privacy & Security** and click **Open Anyway**. Finally allow it in **Privacy & Security → Accessibility** so the cats can see your key presses. Letters are only drawn, never stored or sent, the app makes no network requests at all, and password fields are hidden by macOS Secure Input. The cat icon in the menu bar has everything else: the regular Touch Bar, the **Cats** menu (letters caught today, add or remove cats, night mode), **Settings** (open at login, haptics, Control Strip, gestures, config, **language: Russian or English**) and **Quit**.

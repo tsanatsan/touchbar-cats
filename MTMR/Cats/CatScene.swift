@@ -188,7 +188,8 @@ final class CatScene {
     let floorY: CGFloat = 23
     var ballGroundY: CGFloat { return height - 4.5 }
 
-    let roster: [Cat]
+    private(set) var roster: [Cat]
+    private var deletedIds: Set<String> = []
     private(set) var cats: [Cat] = []
     var flies: [Fly] = []
     var effects: [Effect] = []
@@ -231,18 +232,26 @@ final class CatScene {
     private(set) var caughtToday: Int
 
     private init() {
-        roster = catBreeds.enumerated().map { Cat(breed: $0.element, index: $0.offset) }
+        let breeds = catBreeds + CustomCatStore.load().prefix(maxCats - catBreeds.count).map { $0.breed }
+        roster = breeds.enumerated().map { Cat(breed: $0.element, index: $0.offset) }
         let defaults = UserDefaults.standard
         nightMode = defaults.integer(forKey: "cats.night")
         let today = CatScene.dayString()
         caughtToday = defaults.string(forKey: "cats.caught.day") == today ? defaults.integer(forKey: "cats.caught.count") : 0
-        if let saved = defaults.array(forKey: "cats.affection") as? [Double] {
-            for (cat, value) in zip(roster, saved) { cat.affection = CGFloat(value) }
-        }
-        let enabled = (defaults.array(forKey: "cats.enabled") as? [Int]) ?? Array(0 ..< roster.count)
-        paused = AppSettings.nativeTouchBar
         let all = roster
-        cats = enabled.filter { $0 >= 0 && $0 < all.count }.map { all[$0] }
+        // settings are stored by cat id; older versions stored array positions of the ten built-in cats
+        var affection = defaults.dictionary(forKey: "cats.affectionById") as? [String: Double] ?? [:]
+        if affection.isEmpty, let old = defaults.array(forKey: "cats.affection") as? [Double] {
+            for (cat, value) in zip(all, old) { affection[cat.breed.key] = value }
+        }
+        for cat in all { cat.affection = CGFloat(affection[cat.breed.key] ?? 0) }
+        var enabled = defaults.stringArray(forKey: "cats.enabledIds")
+        if enabled == nil, let old = defaults.array(forKey: "cats.enabled") as? [Int] {
+            enabled = old.filter { $0 >= 0 && $0 < catBreeds.count }.map { catBreeds[$0].key }
+        }
+        let ids = enabled ?? all.map { $0.breed.key }
+        paused = AppSettings.nativeTouchBar
+        cats = all.filter { ids.contains($0.breed.key) }
         placeOffscreen()
         if !paused { walkIn() }
         installMonitors()
@@ -251,13 +260,15 @@ final class CatScene {
     // MARK: - Public controls
 
     var activeCount: Int { return cats.filter { !$0.removing }.count }
+    var customCount: Int { return roster.filter { $0.breed.custom && !deletedIds.contains($0.breed.key) }.count }
+    var canAddCustomCat: Bool { return roster.count - deletedIds.count < maxCats }
 
-    func isEnabled(_ index: Int) -> Bool {
-        return cats.contains { $0.index == index && !$0.removing }
+    func isEnabled(_ id: String) -> Bool {
+        return cats.contains { $0.breed.key == id && !$0.removing }
     }
 
-    func setEnabled(_ index: Int, _ on: Bool) {
-        let cat = roster[index]
+    func setEnabled(_ id: String, _ on: Bool) {
+        guard let cat = roster.first(where: { $0.breed.key == id }), !deletedIds.contains(id) else { return }
         if on {
             guard !cats.contains(where: { $0 === cat }) || cat.removing else { return }
             cat.removing = false
@@ -277,11 +288,39 @@ final class CatScene {
     }
 
     func addCat() {
-        if let next = roster.first(where: { !isEnabled($0.index) }) { setEnabled(next.index, true) }
+        if let next = roster.first(where: { !isEnabled($0.breed.key) && !deletedIds.contains($0.breed.key) }) {
+            setEnabled(next.breed.key, true)
+        }
     }
 
     func removeCat() {
-        if let last = cats.last(where: { !$0.removing }) { setEnabled(last.index, false) }
+        if let last = cats.last(where: { !$0.removing }) { setEnabled(last.breed.key, false) }
+    }
+
+    /// A cat made in the workshop moves in from the edge
+    func addCustomCat(_ record: CustomCat) {
+        guard canAddCustomCat else { return }
+        var stored = CustomCatStore.load().filter { $0.id != record.id }
+        stored.append(record)
+        CustomCatStore.save(stored)
+        let cat = Cat(breed: record.breed, index: roster.count)
+        roster.append(cat)
+        setEnabled(cat.breed.key, true)
+        save()
+    }
+
+    func deleteCustomCat(_ id: String) {
+        CustomCatStore.save(CustomCatStore.load().filter { $0.id != id })
+        guard let cat = roster.first(where: { $0.breed.key == id }) else { return }
+        deletedIds.insert(id)
+        if cats.contains(where: { $0 === cat }) {
+            cat.removing = true
+            sendOff(cat)
+        } else {
+            roster.removeAll { $0 === cat }
+            deletedIds.remove(id)
+        }
+        saveSoon()
     }
 
     /// Cats run off the edges, then `completion` (used before showing the system Touch Bar)
@@ -756,6 +795,12 @@ final class CatScene {
             updateCat(cat, dt, now: now, taps: tapList, points: points, fastest: fastest, favorite: favorite)
         }
         cats.removeAll { $0.removing && $0.mode == .exit && ($0.x < -20 || $0.x > width + 20) }
+        if !deletedIds.isEmpty {
+            let onScreen = cats
+            let gone = roster.filter { cat in deletedIds.contains(cat.breed.key) && !onScreen.contains(where: { $0 === cat }) }
+            roster.removeAll { cat in gone.contains(where: { $0 === cat }) }
+            gone.forEach { deletedIds.remove($0.breed.key) }
+        }
 
         if let completion = exitCompletion,
            t > exitDeadline || cats.allSatisfy({ $0.x < -20 || $0.x > width + 20 }) {
@@ -1175,8 +1220,10 @@ final class CatScene {
     func save() {
         saveAt = nil
         let defaults = UserDefaults.standard
-        defaults.set(cats.filter { !$0.removing }.map { $0.index }, forKey: "cats.enabled")
-        defaults.set(roster.map { Double($0.affection) }, forKey: "cats.affection")
+        defaults.set(cats.filter { !$0.removing }.map { $0.breed.key }, forKey: "cats.enabledIds")
+        var affection: [String: Double] = [:]
+        for cat in roster where !deletedIds.contains(cat.breed.key) { affection[cat.breed.key] = Double(cat.affection) }
+        defaults.set(affection, forKey: "cats.affectionById")
         defaults.set(CatScene.dayString(), forKey: "cats.caught.day")
         defaults.set(caughtToday, forKey: "cats.caught.count")
     }
