@@ -10,6 +10,10 @@
 </p>
 
 <p align="center">
+  🇬🇧 <b>English speaker?</b> The English guide is at the very bottom of this page — <a href="#english">jump to English ↓</a>
+</p>
+
+<p align="center">
   <a href="https://github.com/tsanatsan/touchbar-cats/releases/latest/download/TouchBar-Cats.zip"><img alt="Скачать TouchBar Cats" src="https://img.shields.io/badge/%E2%AC%87%EF%B8%8E%20%D0%A1%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C-TouchBar%20Cats-ff8a3d?style=for-the-badge"></a>
 </p>
 
@@ -55,8 +59,8 @@
 
 <br>
 
-- **Выключить:** вверху экрана, в строке меню, есть значок с буквами **MT**. Нажмите на него и выберите **Quit**.
-- **Запускать вместе с Mac:** в том же меню включите **Start at login**.
+- **Выключить:** вверху экрана, в строке меню, есть значок с сидящим котиком. Нажмите на него и выберите **«Выйти»**.
+- **Запускать вместе с Mac:** в том же меню откройте **«Настройки»** и включите **«Открывать при входе»**.
 - **Удалить:** выключите программу, перетащите TouchBar Cats из «Программ» в корзину, а в «Универсальном доступе» уберите её строчку кнопкой «−».
 
 </details>
@@ -131,7 +135,12 @@
 | дважды коснитесь клубка | кот уносит его в зубах |
 | задержите палец | любимчик подходит сам |
 
-**Меню котиков.** Нажмите на значок **MT** в строке меню и откройте «Котики». Там видно, сколько букв поймано сегодня. Можно добавить или убрать кота, выбрать, кто из десяти живёт на тачбаре, и включить вечную ночь или вечный день.
+**Меню.** Нажмите на значок с котиком в строке меню. Там всего четыре пункта:
+
+- **«Обычный тачбар»** — то же, что ⌃⌥⌘T;
+- **«Котики»** — сколько букв поймано сегодня, добавить или убрать кота, выбрать, кто из десяти живёт на тачбаре, вечная ночь или вечный день;
+- **«Настройки»** — запуск при входе, тактильный отклик, полоса управления, жесты громкости и яркости, скрыть котов в текущей программе, файл конфига и **язык: русский или английский**;
+- **«Выйти»**.
 
 ## Это безопасно?
 
@@ -220,7 +229,7 @@ make run
 - **Ten cats:** ginger tabby, black, tuxedo, chubby calico, Siamese, chubby grey-and-white, hairless Sphynx, Maine Coon, Scottish Fold and an odd-eyed white fluffball. Your favourite one comes to your finger by itself.
 - **⌃⌥⌘T** swaps to the regular Touch Bar and back.
 
-**Install:** download the zip, unzip it, drag **TouchBar Cats** into Applications and open it. macOS will say it can't verify the app — it's free and not notarized — so press **Done**, then go to **System Settings → Privacy & Security** and click **Open Anyway**. Finally allow it in **Privacy & Security → Accessibility** so the cats can see your key presses. Letters are only drawn, never stored or sent, the app makes no network requests at all, and password fields are hidden by macOS Secure Input. Quit it from the **MT** icon in the menu bar.
+**Install:** download the zip, unzip it, drag **TouchBar Cats** into Applications and open it. macOS will say it can't verify the app — it's free and not notarized — so press **Done**, then go to **System Settings → Privacy & Security** and click **Open Anyway**. Finally allow it in **Privacy & Security → Accessibility** so the cats can see your key presses. Letters are only drawn, never stored or sent, the app makes no network requests at all, and password fields are hidden by macOS Secure Input. The cat icon in the menu bar has everything else: the regular Touch Bar, the **Cats** menu (letters caught today, add or remove cats, night mode), **Settings** (open at login, haptics, Control Strip, gestures, config, **language: Russian or English**) and **Quit**.
 
 **Where it comes from:** I took [MTMR](https://github.com/Toxblh/MTMR) by Anton Palgunov — open source and the easiest way into the Touch Bar — cut almost everything out and moved the cats in. Huge thanks to Anton and all MTMR contributors for sharing their code. TouchBar Cats is shared the same way: free and open source under the [MIT](LICENSE) license.
 

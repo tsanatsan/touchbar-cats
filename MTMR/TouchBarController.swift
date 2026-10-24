@@ -285,9 +285,7 @@ class TouchBarController: NSObject, NSTouchBarDelegate {
     @objc func setupControlStripPresence() {
         DFRSystemModalShowsCloseBoxWhenFrontMost(false)
         let item = NSCustomTouchBarItem(identifier: .controlStripItem)
-        let icon = #imageLiteral(resourceName: "StatusImage").copy() as! NSImage
-        icon.isTemplate = true // the asset is black; template lets the Touch Bar tint it white
-        item.view = NSButton(image: icon, target: self, action: #selector(showMtmrTouchBar))
+        item.view = NSButton(image: CatIcon.image(), target: self, action: #selector(showMtmrTouchBar))
         NSTouchBarItem.addSystemTrayItem(item)
         updateControlStripPresence()
     }

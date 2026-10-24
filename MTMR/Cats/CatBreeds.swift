@@ -131,3 +131,18 @@ let catBreeds: [Breed] = [
           palette: palette(o: 0x8A8A96, f: 0xF7F7F4, d: 0xDCDCD6, b: 0xFFFFFF, e: 0x6CB6FF, p: 0xFFAAB8, e2: 0xF2B33A),
           playful: 0.5, sleepy: 0.7, tail: .bushy, eyes: .big, ruff: true),
 ]
+
+private let englishNames = [
+    "Рыжик": "Ginger", "Уголёк": "Coal", "Фрак": "Tux", "Ириска": "Toffee", "Сима": "Sima",
+    "Пончик": "Donut", "Добби": "Dobby", "Барон": "Baron", "Пуговка": "Button", "Снежок": "Snowball",
+]
+private let englishKinds = [
+    "Рыжик": "ginger tabby", "Уголёк": "black", "Фрак": "tuxedo", "Ириска": "chubby calico", "Сима": "Siamese",
+    "Пончик": "chubby grey-and-white", "Добби": "Sphynx", "Барон": "Maine Coon", "Пуговка": "Scottish Fold",
+    "Снежок": "white, odd-eyed",
+]
+
+extension Breed {
+    var displayName: String { return tr(name, englishNames[name] ?? name) }
+    var displayKind: String { return tr(kind, englishKinds[name] ?? kind) }
+}

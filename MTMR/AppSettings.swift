@@ -4,6 +4,10 @@ struct AppSettings {
     @UserDefault(key: "com.toxblh.mtmr.settings.showControlStrip", defaultValue: false)
     static var showControlStripState: Bool
     
+    /// "" follows the system language, "ru" or "en" is fixed
+    @UserDefault(key: "com.toxblh.mtmr.settings.language", defaultValue: "")
+    static var language: String
+
     @UserDefault(key: "com.toxblh.mtmr.settings.nativeTouchBar", defaultValue: false)
     static var nativeTouchBar: Bool
 

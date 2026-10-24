@@ -403,7 +403,7 @@ final class CatScene {
         }
         if !allowed && t >= hintAt, let cat = cats.filter({ $0.mode != .exit && $0.mode != .front && $0.x > 20 && $0.x < width - 20 }).randomElement() {
             hintAt = t + 45
-            bubbles.append(Bubble(cat: cat, text: "нужен доступ", life: 4))
+            bubbles.append(Bubble(cat: cat, text: tr("нужен доступ", "need access"), life: 4))
         }
     }
 
@@ -516,7 +516,7 @@ final class CatScene {
             if cat.mode == .loaf { cat.setMode(.sit, 2) }
             cat.dir = x >= cat.x ? 1 : -1
             cat.look = 1
-            self.bubbles.append(Bubble(cat: cat, text: ["мяу", "мяу!", "мрр?"].randomElement()!))
+            self.bubbles.append(Bubble(cat: cat, text: (isRussian ? ["мяу", "мяу!", "мрр?"] : ["meow", "meow!", "mrr?"]).randomElement()!))
         }))
     }
 
@@ -932,7 +932,7 @@ final class CatScene {
             saveSoon()
             if !cat.nameShown {
                 cat.nameShown = true
-                if !front { bubbles.append(Bubble(cat: cat, text: cat.breed.name)) }
+                if !front { bubbles.append(Bubble(cat: cat, text: cat.breed.displayName)) }
             }
             if ![.loaf, .sit, .front].contains(cat.mode) { cat.setMode(.sit, 3) }
             cat.dur = max(cat.dur, cat.mt + 1.5)

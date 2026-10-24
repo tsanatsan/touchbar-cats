@@ -29,7 +29,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if let button = statusItem.button {
-            button.image = #imageLiteral(resourceName: "StatusImage")
+            button.image = CatIcon.image()
         }
         createMenu()
 
@@ -60,10 +60,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         task.launch()
     }
 
-    @objc func toggleControlStrip(_ item: NSMenuItem) {
-        item.state = item.state == .on ? .off : .on
-        AppSettings.showControlStripState = item.state == .off
+    @objc func toggleControlStrip(_: Any?) {
+        AppSettings.showControlStripState.toggle()
         TouchBarController.shared.resetControlStrip()
+        createMenu()
     }
 
     @objc func toggleBlackListedApp(_: Any?) {
@@ -85,21 +85,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         createMenu()
     }
 
-    @objc func toggleHapticFeedback(_ item: NSMenuItem) {
-        item.state = item.state == .on ? .off : .on
-        AppSettings.hapticFeedbackState = item.state == .on
+    @objc func toggleHapticFeedback(_: Any?) {
+        AppSettings.hapticFeedbackState.toggle()
+        createMenu()
     }
 
-    @objc func toggleMultitouch(_ item: NSMenuItem) {
-        item.state = item.state == .on ? .off : .on
-        AppSettings.multitouchGestures = item.state == .on
-        TouchBarController.shared.basicView?.legacyGesturesEnabled = item.state == .on
+    @objc func toggleMultitouch(_: Any?) {
+        AppSettings.multitouchGestures.toggle()
+        TouchBarController.shared.basicView?.legacyGesturesEnabled = AppSettings.multitouchGestures
+        createMenu()
+    }
+
+    @objc func setLanguage(_ item: NSMenuItem) {
+        AppSettings.language = item.representedObject as? String ?? ""
+        createMenu()
     }
 
     @objc func openPreset(_: Any?) {
         let dialog = NSOpenPanel()
 
-        dialog.title = "Choose a items.json file"
+        dialog.title = tr("Выберите файл items.json", "Choose an items.json file")
         dialog.showsResizeIndicator = true
         dialog.showsHiddenFiles = true
         dialog.canChooseDirectories = false
@@ -118,49 +123,54 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         createMenu()
     }
 
+    private func item(_ title: String, _ action: Selector?, on: Bool = false) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+        item.state = on ? .on : .off
+        return item
+    }
+
+    private func submenu(_ title: String, _ id: String, items: [NSMenuItem] = []) -> NSMenuItem {
+        let menu = NSMenu(title: title)
+        menu.identifier = NSUserInterfaceItemIdentifier(id)
+        menu.delegate = self
+        items.forEach { menu.addItem($0) }
+        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        item.submenu = menu
+        return item
+    }
+
     func createMenu() {
         let menu = NSMenu()
 
-        let startAtLogin = NSMenuItem(title: "Start at login", action: #selector(toggleStartAtLogin(_:)), keyEquivalent: "L")
-        startAtLogin.state = LaunchAtLoginController().launchAtLogin ? .on : .off
+        let native = item(tr("Обычный тачбар", "Regular Touch Bar"), #selector(toggleNativeTouchBar(_:)), on: AppSettings.nativeTouchBar)
+        native.keyEquivalent = "t" // only shows ⌃⌥⌘T, the global hotkey does the work
+        native.keyEquivalentModifierMask = [.command, .option, .control]
+        menu.addItem(native)
+        menu.addItem(submenu(tr("Котики", "Cats"), "cats"))
 
-        let toggleBlackList = NSMenuItem(title: "Toggle current app in blacklist", action: #selector(toggleBlackListedApp(_:)), keyEquivalent: "B")
-        toggleBlackList.state = isBlockedApp ? .on : .off
-
-        let hideControlStrip = NSMenuItem(title: "Hide Control Strip", action: #selector(toggleControlStrip(_:)), keyEquivalent: "T")
-        hideControlStrip.state = AppSettings.showControlStripState ? .off : .on
-
-        let hapticFeedback = NSMenuItem(title: "Haptic Feedback", action: #selector(toggleHapticFeedback(_:)), keyEquivalent: "H")
-        hapticFeedback.state = AppSettings.hapticFeedbackState ? .on : .off
-
-        let multitouchGestures = NSMenuItem(title: "Volume/Brightness gestures", action: #selector(toggleMultitouch(_:)), keyEquivalent: "")
-        multitouchGestures.state = AppSettings.multitouchGestures ? .on : .off
-
-        let nativeTouchBar = NSMenuItem(title: "System Touch Bar", action: #selector(toggleNativeTouchBar(_:)), keyEquivalent: "t")
-        nativeTouchBar.keyEquivalentModifierMask = [.command, .option, .control]
-        nativeTouchBar.state = AppSettings.nativeTouchBar ? .on : .off
-
-        let settingSeparator = NSMenuItem(title: "Settings", action: nil, keyEquivalent: "")
-        settingSeparator.isEnabled = false
-
-        menu.addItem(withTitle: "Preferences", action: #selector(openPreferences(_:)), keyEquivalent: ",")
-        menu.addItem(withTitle: "Open preset", action: #selector(openPreset(_:)), keyEquivalent: "O")
-        menu.addItem(nativeTouchBar)
-        let catsItem = NSMenuItem(title: "Котики", action: nil, keyEquivalent: "")
-        let catsMenu = NSMenu(title: "Котики")
-        catsMenu.delegate = self
-        catsItem.submenu = catsMenu
-        menu.addItem(catsItem)
+        let appName = NSWorkspace.shared.frontmostApplication?.localizedName ?? tr("этой программе", "this app")
+        let language = AppLanguage(rawValue: AppSettings.language) ?? .system
+        let languages: [NSMenuItem] = [(AppLanguage.system, tr("Как в системе", "System")), (.ru, "Русский"), (.en, "English")].map {
+            let item = self.item($0.1, #selector(setLanguage(_:)), on: language == $0.0)
+            item.representedObject = $0.0.rawValue
+            return item
+        }
+        let settings = submenu(tr("Настройки", "Settings"), "settings", items: [
+            item(tr("Открывать при входе", "Open at login"), #selector(toggleStartAtLogin(_:)), on: LaunchAtLoginController().launchAtLogin),
+            item(tr("Тактильный отклик", "Haptic feedback"), #selector(toggleHapticFeedback(_:)), on: AppSettings.hapticFeedbackState),
+            item(tr("Полоса управления справа", "Show Control Strip"), #selector(toggleControlStrip(_:)), on: AppSettings.showControlStripState),
+            item(tr("Громкость двумя пальцами, яркость тремя", "Two fingers: volume, three: brightness"), #selector(toggleMultitouch(_:)), on: AppSettings.multitouchGestures),
+            item(tr("Не показывать в «\(appName)»", "Hide in “\(appName)”"), #selector(toggleBlackListedApp(_:)), on: isBlockedApp),
+            NSMenuItem.separator(),
+            item(tr("Открыть конфиг…", "Open config…"), #selector(openPreferences(_:))),
+            item(tr("Загрузить пресет…", "Load preset…"), #selector(openPreset(_:))),
+            NSMenuItem.separator(),
+            submenu(tr("Язык", "Language"), "language", items: languages),
+        ])
+        menu.addItem(settings)
 
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(settingSeparator)
-        menu.addItem(hapticFeedback)
-        menu.addItem(hideControlStrip)
-        menu.addItem(toggleBlackList)
-        menu.addItem(startAtLogin)
-        menu.addItem(multitouchGestures)
-        menu.addItem(NSMenuItem.separator())
-        menu.addItem(withTitle: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        menu.addItem(withTitle: tr("Выйти", "Quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         statusItem.menu = menu
     }
 
@@ -190,40 +200,39 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension AppDelegate: NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
-        guard menu.title == "Котики" else { return }
+        guard menu.identifier?.rawValue == "cats" else { return }
         let scene = CatScene.shared
         menu.removeAllItems()
 
         if !AXIsProcessTrusted() {
-            menu.addItem(NSMenuItem(title: "Буквы выключены: включите MTMR в «Универсальном доступе»…", action: #selector(openAccessibilitySettings(_:)), keyEquivalent: ""))
+            menu.addItem(item(tr("Буквы выключены: разрешите «Универсальный доступ»…", "Letters are off: allow Accessibility…"),
+                              #selector(openAccessibilitySettings(_:))))
             menu.addItem(NSMenuItem.separator())
         }
-        let caught = NSMenuItem(title: "Поймано букв сегодня: \(scene.caughtTodayNow)", action: nil, keyEquivalent: "")
+        let caught = item(tr("Поймано букв сегодня: \(scene.caughtTodayNow)", "Letters caught today: \(scene.caughtTodayNow)"), nil)
         caught.isEnabled = false
         menu.addItem(caught)
         menu.addItem(NSMenuItem.separator())
 
-        let add = NSMenuItem(title: "Добавить котика", action: #selector(addCat(_:)), keyEquivalent: "")
+        let add = item(tr("Добавить котика", "Add a cat"), #selector(addCat(_:)))
         add.isEnabled = scene.activeCount < catBreeds.count
         menu.addItem(add)
-        let remove = NSMenuItem(title: "Убрать котика", action: #selector(removeCat(_:)), keyEquivalent: "")
+        let remove = item(tr("Убрать котика", "Remove a cat"), #selector(removeCat(_:)))
         remove.isEnabled = scene.activeCount > 1
         menu.addItem(remove)
         menu.addItem(NSMenuItem.separator())
 
         for (i, breed) in catBreeds.enumerated() {
-            let item = NSMenuItem(title: "\(breed.name) — \(breed.kind)", action: #selector(toggleCat(_:)), keyEquivalent: "")
-            item.tag = i
-            item.state = scene.isEnabled(i) ? .on : .off
-            menu.addItem(item)
+            let cat = item("\(breed.displayName) — \(breed.displayKind)", #selector(toggleCat(_:)), on: scene.isEnabled(i))
+            cat.tag = i
+            menu.addItem(cat)
         }
         menu.addItem(NSMenuItem.separator())
 
-        for (mode, title) in [(0, "Ночь по часам"), (1, "Всегда ночь"), (2, "Всегда день")] {
-            let item = NSMenuItem(title: title, action: #selector(setCatsNight(_:)), keyEquivalent: "")
-            item.tag = mode
-            item.state = scene.nightMode == mode ? .on : .off
-            menu.addItem(item)
+        for (mode, title) in [(0, tr("Ночь по часам", "Night by the clock")), (1, tr("Всегда ночь", "Always night")), (2, tr("Всегда день", "Always day"))] {
+            let night = item(title, #selector(setCatsNight(_:)), on: scene.nightMode == mode)
+            night.tag = mode
+            menu.addItem(night)
         }
     }
 
