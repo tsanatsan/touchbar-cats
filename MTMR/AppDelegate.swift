@@ -148,6 +148,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         createMenu()
     }
 
+    /// A small grey title over a group of items
+    private func header(_ title: String) -> NSMenuItem {
+        if #available(macOS 14, *) { return NSMenuItem.sectionHeader(title: title) }
+        let header = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        header.isEnabled = false
+        return header
+    }
+
     private func item(_ title: String, _ action: Selector?, on: Bool = false) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
         item.state = on ? .on : .off
@@ -181,21 +189,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             item.representedObject = $0.0.rawValue
             return item
         }
+        // three short groups: the app, the cats, the Touch Bar; the config files live one level down
         let settings = submenu(tr("Настройки", "Settings"), "settings", items: [
             item(tr("Открывать при входе", "Open at login"), #selector(toggleStartAtLogin(_:)), on: LaunchAtLoginController().launchAtLogin),
-            item(tr("Тактильный отклик", "Haptic feedback"), #selector(toggleHapticFeedback(_:)), on: AppSettings.hapticFeedbackState),
-            item(tr("Полоса управления справа", "Show Control Strip"), #selector(toggleControlStrip(_:)), on: AppSettings.showControlStripState),
+            submenu(tr("Язык", "Language"), "language", items: languages),
+            header(tr("Котики", "Cats")),
+            item(tr("Лазер от тачпада", "Trackpad laser"), #selector(toggleLaser(_:)), on: CatTrackpad.enabled),
+            item(tr("Сезоны и праздники", "Seasons and holidays"), #selector(toggleSeasons(_:)), on: AppSettings.seasons),
+            item(tr("Звуки", "Sounds"), #selector(toggleSounds(_:)), on: AppSettings.catSounds),
+            header(tr("Тачбар", "Touch Bar")),
             item(tr("Громкость двумя пальцами, яркость тремя", "Two fingers: volume, three: brightness"), #selector(toggleMultitouch(_:)), on: AppSettings.multitouchGestures),
+            item(tr("Полоса управления справа", "Control Strip on the right"), #selector(toggleControlStrip(_:)), on: AppSettings.showControlStripState),
+            item(tr("Тактильный отклик", "Haptic feedback"), #selector(toggleHapticFeedback(_:)), on: AppSettings.hapticFeedbackState),
             item(tr("Не показывать в «\(appName)»", "Hide in “\(appName)”"), #selector(toggleBlackListedApp(_:)), on: isBlockedApp),
             NSMenuItem.separator(),
-            item(tr("Сезоны и праздники", "Seasons and holidays"), #selector(toggleSeasons(_:)), on: AppSettings.seasons),
-            item(tr("Звуки котов", "Cat sounds"), #selector(toggleSounds(_:)), on: AppSettings.catSounds),
-            item(tr("Лазер от тачпада", "Trackpad laser"), #selector(toggleLaser(_:)), on: CatTrackpad.enabled),
-            NSMenuItem.separator(),
-            item(tr("Открыть конфиг…", "Open config…"), #selector(openPreferences(_:))),
-            item(tr("Загрузить пресет…", "Load preset…"), #selector(openPreset(_:))),
-            NSMenuItem.separator(),
-            submenu(tr("Язык", "Language"), "language", items: languages),
+            submenu(tr("Для продвинутых", "Advanced"), "advanced", items: [
+                item(tr("Открыть конфиг…", "Open config…"), #selector(openPreferences(_:))),
+                item(tr("Загрузить пресет…", "Load preset…"), #selector(openPreset(_:))),
+            ]),
         ])
         menu.addItem(settings)
 
@@ -247,9 +258,9 @@ extension AppDelegate: NSMenuDelegate {
         let caughtNow = scene.caughtTodayNow
         let share = stats.typed > 0 ? Int((Double(caughtNow) / Double(stats.typed) * 100).rounded()) : 0
         for line in [
-            tr("Сегодня: \(stats.typed) букв · поймано \(caughtNow) (\(share)%)", "Today: \(stats.typed) letters · \(caughtNow) caught (\(share)%)"),
-            tr("Скорость: \(stats.speed) зн/мин · рекорд \(stats.bestSpeed)", "Speed: \(stats.speed) chars/min · best \(stats.bestSpeed)"),
-            tr("Всего поймано: \(stats.totalCaught) · рекорд дня \(stats.bestCaught)", "Caught in total: \(stats.totalCaught) · best day \(stats.bestCaught)"),
+            tr("Сегодня \(stats.typed) букв, поймано \(caughtNow) (\(share)%)", "Today \(stats.typed) letters, \(caughtNow) caught (\(share)%)"),
+            tr("\(stats.speed) зн/мин, рекорд \(stats.bestSpeed) · всего поймано \(stats.totalCaught)",
+               "\(stats.speed) chars/min, best \(stats.bestSpeed) · \(stats.totalCaught) caught in all"),
         ] {
             let row = item(line, nil)
             row.isEnabled = false
@@ -263,7 +274,47 @@ extension AppDelegate: NSMenuDelegate {
         let remove = item(tr("Убрать котика", "Remove a cat"), #selector(removeCat(_:)))
         remove.isEnabled = scene.activeCount > 1
         menu.addItem(remove)
+        let who: [NSMenuItem] = scene.roster.map { cat in
+            let breed = cat.breed
+            let kind = breed.kitten ? tr("котёнок", "kitten") : (breed.custom ? tr("мой кот", "my cat") : breed.displayKind)
+            let row = item("\(breed.displayName) — \(kind)", #selector(toggleCat(_:)), on: scene.isEnabled(breed.key))
+            row.representedObject = breed.key
+            return row
+        }
+        menu.addItem(submenu(tr("Кто на тачбаре (\(scene.activeCount))", "Who's on the bar (\(scene.activeCount))"), "who", items: who))
+        if !ownCatsFrozen { menu.addItem(ownCatsMenu(scene)) }
+        menu.addItem(NSMenuItem.separator())
 
+        let backgrounds: [NSMenuItem] = CatBackdrop.allCases.map {
+            let row = item($0.title, #selector(setCatsBackground(_:)), on: CatBackdrop.current == $0)
+            row.representedObject = $0.rawValue
+            return row
+        }
+        menu.addItem(submenu(tr("Фон", "Background"), "background", items: backgrounds))
+        let letterColors: [NSMenuItem] = LetterColor.allCases.map {
+            let row = item($0.title, #selector(setLetterColor(_:)), on: LetterColor.current == $0)
+            row.representedObject = $0.rawValue
+            row.image = $0.swatch
+            return row
+        }
+        menu.addItem(submenu(tr("Цвет букв", "Letter color"), "letterColor", items: letterColors))
+        let nights: [NSMenuItem] = [(0, tr("Ночь по часам", "Night by the clock")), (1, tr("Всегда ночь", "Always night")),
+                                    (2, tr("Всегда день", "Always day"))].map { mode, title in
+            let row = item(title, #selector(setCatsNight(_:)), on: scene.nightMode == mode)
+            row.tag = mode
+            return row
+        }
+        menu.addItem(submenu(tr("День и ночь", "Day and night"), "night", items: nights))
+        menu.addItem(NSMenuItem.separator())
+
+        let gif = item(CatRecorder.shared.isRecording ? tr("Записываю…", "Recording…") : tr("Записать GIF (5 секунд)", "Record a GIF (5 seconds)"),
+                       #selector(recordGIF(_:)))
+        gif.isEnabled = !CatRecorder.shared.isRecording && !scene.paused
+        menu.addItem(gif)
+    }
+
+    /// Cats from photos and kittens (hidden while `ownCatsFrozen`)
+    private func ownCatsMenu(_ scene: CatScene) -> NSMenuItem {
         let custom = scene.roster.filter { $0.breed.custom }
         func catList(_ cats: [Cat], _ action: Selector) -> [NSMenuItem] {
             return cats.map {
@@ -283,40 +334,7 @@ extension AppDelegate: NSMenuDelegate {
             ownItems.append(submenu(tr("Изменить", "Edit"), "editCat", items: catList(custom, #selector(editCustomCat(_:)))))
             ownItems.append(submenu(tr("Удалить", "Delete"), "deleteCat", items: catList(custom, #selector(deleteCustomCat(_:)))))
         }
-        menu.addItem(submenu(tr("Свои коты", "My cats"), "own", items: ownItems))
-        let gif = item(CatRecorder.shared.isRecording ? tr("Записываю…", "Recording…") : tr("Записать GIF (5 секунд)", "Record a GIF (5 seconds)"),
-                       #selector(recordGIF(_:)))
-        gif.isEnabled = !CatRecorder.shared.isRecording && !scene.paused
-        menu.addItem(gif)
-        menu.addItem(NSMenuItem.separator())
-
-        for cat in scene.roster {
-            let breed = cat.breed
-            let kind = breed.kitten ? tr("котёнок", "kitten") : (breed.custom ? tr("мой кот", "my cat") : breed.displayKind)
-            let row = item("\(breed.displayName) — \(kind)", #selector(toggleCat(_:)), on: scene.isEnabled(breed.key))
-            row.representedObject = breed.key
-            menu.addItem(row)
-        }
-        menu.addItem(NSMenuItem.separator())
-
-        for (mode, title) in [(0, tr("Ночь по часам", "Night by the clock")), (1, tr("Всегда ночь", "Always night")), (2, tr("Всегда день", "Always day"))] {
-            let night = item(title, #selector(setCatsNight(_:)), on: scene.nightMode == mode)
-            night.tag = mode
-            menu.addItem(night)
-        }
-        let backgrounds: [NSMenuItem] = CatBackdrop.allCases.map {
-            let row = item($0.title, #selector(setCatsBackground(_:)), on: CatBackdrop.current == $0)
-            row.representedObject = $0.rawValue
-            return row
-        }
-        menu.addItem(submenu(tr("Фон", "Background"), "background", items: backgrounds))
-        let letterColors: [NSMenuItem] = LetterColor.allCases.map {
-            let row = item($0.title, #selector(setLetterColor(_:)), on: LetterColor.current == $0)
-            row.representedObject = $0.rawValue
-            row.image = $0.swatch
-            return row
-        }
-        menu.addItem(submenu(tr("Цвет букв", "Letter color"), "letterColor", items: letterColors))
+        return submenu(tr("Свои коты", "My cats"), "own", items: ownItems)
     }
 
     @objc func openAccessibilitySettings(_: Any?) {

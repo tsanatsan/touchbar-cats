@@ -16,10 +16,10 @@ enum CatMode {
     case boop, boopGo, attend, front, swatGo, swat, ballChase, fetch, carry, come, enter, exit
     // toys, words and helpers (CatExtras.swift)
     case eatGo, eat, wave, sulk, boxGo, inBox, pomodoro, warmGo, warm
-    case laserChase, mouseHunt
+    case laserChase, laserCoast, laserSwat, laserClap, mouseHunt
 }
 
-private let extraModes: Set<CatMode> = [.eatGo, .eat, .wave, .sulk, .boxGo, .inBox, .pomodoro, .warmGo, .warm, .laserChase, .mouseHunt]
+private let extraModes: Set<CatMode> = [.eatGo, .eat, .wave, .sulk, .boxGo, .inBox, .pomodoro, .warmGo, .warm, .laserChase, .laserCoast, .laserSwat, .laserClap, .mouseHunt]
 
 enum FlyState {
     case rise, hover, drop, knocked, fall
@@ -103,6 +103,7 @@ final class Cat {
     var petIdle: CGFloat = 0
     var affection: CGFloat = 0
     var extraT: CGFloat = 0
+    var coast: (v: CGFloat, drag: CGFloat, hold: CGFloat) = (0, 2, 0) // running on after the laser dot is gone
 
     var isExtraMode: Bool { return extraModes.contains(mode) }
     var slot = 0 // place in the row at the glass
@@ -245,7 +246,8 @@ final class CatScene {
     private(set) var caughtToday: Int
 
     private init() {
-        let breeds = catBreeds + CustomCatStore.load().prefix(maxCats - catBreeds.count).map { $0.breed }
+        let own = ownCatsFrozen ? [] : CustomCatStore.load().prefix(max(0, maxCats - catBreeds.count)).map { $0.breed }
+        let breeds = catBreeds + own
         roster = breeds.enumerated().map { Cat(breed: $0.element, index: $0.offset) }
         let defaults = UserDefaults.standard
         nightMode = defaults.integer(forKey: "cats.night")
@@ -262,7 +264,13 @@ final class CatScene {
         if enabled == nil, let old = defaults.array(forKey: "cats.enabled") as? [Int] {
             enabled = old.filter { $0 >= 0 && $0 < catBreeds.count }.map { catBreeds[$0].key }
         }
-        let ids = enabled ?? all.map { $0.breed.key }
+        var ids = enabled ?? all.map { $0.breed.key }
+        // eight more cats moved in: they come once even where an older list of cats is saved
+        if !defaults.bool(forKey: "cats.eighteen") {
+            ids += catBreeds.dropFirst(10).map { $0.key }.filter { !ids.contains($0) }
+            defaults.set(ids, forKey: "cats.enabledIds") // saved together with the flag, so no cat is left out
+            defaults.set(true, forKey: "cats.eighteen")
+        }
         paused = AppSettings.nativeTouchBar || AppSettings.cloudsMode
         cats = all.filter { ids.contains($0.breed.key) }
         placeOffscreen()
@@ -324,6 +332,7 @@ final class CatScene {
 
     /// The workshop saved changes to one of your cats
     func updateCustomCat(_ record: CustomCat) {
+        CatPack.shared?.forget(record.id)
         var stored = CustomCatStore.load()
         if let i = stored.firstIndex(where: { $0.id == record.id }) { stored[i] = record } else { stored.append(record) }
         CustomCatStore.save(stored)
@@ -332,6 +341,7 @@ final class CatScene {
     }
 
     func deleteCustomCat(_ id: String) {
+        CatPack.shared?.forget(id)
         CustomCatStore.save(CustomCatStore.load().filter { $0.id != id })
         guard let cat = roster.first(where: { $0.breed.key == id }) else { return }
         deletedIds.insert(id)
@@ -1283,7 +1293,7 @@ final class CatScene {
                     cat.setMode(.sit, rnd(0.8, 1.8))
                 }
             }
-        case .eatGo, .eat, .wave, .sulk, .boxGo, .inBox, .pomodoro, .warmGo, .warm, .laserChase, .mouseHunt:
+        case .eatGo, .eat, .wave, .sulk, .boxGo, .inBox, .pomodoro, .warmGo, .warm, .laserChase, .laserCoast, .laserSwat, .laserClap, .mouseHunt:
             updateExtraMode(cat, dt)
         default:
             if cat.mode == .loaf {

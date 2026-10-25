@@ -373,6 +373,21 @@ final class CatPreviewView: NSView {
 
     private func draw(_ cat: Cat, left: CGFloat, bottom: CGFloat, _ ctx: CGContext, scale: CGFloat? = nil) {
         let s = scale ?? pixel
+        // the walking cat in the pack's drawing, exactly as it will look on the bar; repainted every time, the colors change while editing
+        if cat.mode != .front, let pack = CatPack.shared {
+            pack.forget(cat.breed.key)
+            let anim = PackAnim.walk
+            guard let sprite = pack.sprite(cat.breed, row: cat.dir >= 0 ? anim.right : anim.left, col: Int(cat.frame) % anim.frames) else { return }
+            let n = CatPack.cell
+            let top = bottom - CGFloat(sprite.bottom + 1) * s
+            let x0 = left + CGFloat(15 - n / 2) * s
+            for y in 0 ..< n { for x in 0 ..< n {
+                guard let c = sprite.colors[y * n + x] else { continue }
+                ctx.setFillColor(CGColor(colorSpace: displaySpace, components: [CGFloat(c >> 16) / 255, CGFloat((c >> 8) & 0xFF) / 255, CGFloat(c & 0xFF) / 255, 1])!)
+                ctx.fill(CGRect(x: x0 + CGFloat(x) * s, y: top + CGFloat(y) * s, width: s, height: s))
+            } }
+            return
+        }
         let (w, h, paints) = spriteScreen(cat, t: t, dark: 0)
         let top = bottom - CGFloat(h) * s
         for y in 0 ..< h {

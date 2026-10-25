@@ -107,8 +107,12 @@ private func palette(o: UInt32, f: UInt32, d: UInt32, b: UInt32, e: UInt32, p: U
     return result
 }
 
-/// Ten built-in cats plus up to eight cats made from photos
+/// Eighteen built-in cats, all on the bar from the start
 let maxCats = 18
+
+/// Cats from photos and kittens are being reworked: their menu is hidden, and the ones already made
+/// stay saved (but off the bar) until the feature is back
+let ownCatsFrozen = true
 
 let catBreeds: [Breed] = [
     Breed(name: "Рыжик", kind: "рыжий полосатый", coat: .tabby,
@@ -141,16 +145,44 @@ let catBreeds: [Breed] = [
     Breed(name: "Снежок", kind: "белый, глаза разные", coat: .solid,
           palette: palette(o: 0x8A8A96, f: 0xF7F7F4, d: 0xDCDCD6, b: 0xFFFFFF, e: 0x6CB6FF, p: 0xFFAAB8, e2: 0xF2B33A),
           playful: 0.5, sleepy: 0.7, tail: .bushy, eyes: .big, ruff: true),
+    Breed(name: "Персик", kind: "кремовый полосатый", coat: .tabby,
+          palette: palette(o: 0x5A3A22, f: 0xF2C79A, d: 0xD99A62, b: 0xFBEBD6, e: 0x8FD07A, p: 0xFF9AA8),
+          playful: 0.8, sleepy: 0.4),
+    Breed(name: "Дымка", kind: "русская голубая", coat: .solid,
+          palette: palette(o: 0x2E3644, f: 0x7E8DA0, d: 0x63718A, b: 0x9AA6B6, e: 0x7FE08A, p: 0xC98A9A),
+          playful: 0.6, sleepy: 0.5, size: 0.96, eyes: .almond),
+    Breed(name: "Тигра", kind: "серый тигровый", coat: .tabby,
+          palette: palette(o: 0x2A2C30, f: 0xA4A8A6, d: 0x4E5254, b: 0xE4E4DE, e: 0xC8D84A, p: 0xF09AA6),
+          playful: 0.85, sleepy: 0.35),
+    Breed(name: "Мурка", kind: "черепаховая", coat: .calico,
+          palette: palette(o: 0x7A6A60, f: 0x3A2C26, d: 0xC8742E, b: 0x4A3A30, e: 0xE8B23A, p: 0xD68A8A, patch: 0xE09A4E),
+          playful: 0.6, sleepy: 0.6),
+    Breed(name: "Бусинка", kind: "бело-рыжая", coat: .bicolor,
+          palette: palette(o: 0x5A3A22, f: 0xE89A52, d: 0xC0743A, b: 0xFFF8EE, e: 0x8AC6F0, p: 0xFFA0AE),
+          playful: 0.75, sleepy: 0.5, size: 0.9),
+    Breed(name: "Шоколадка", kind: "шоколадная", coat: .solid,
+          palette: palette(o: 0x2A1A12, f: 0x6E4632, d: 0x4E3022, b: 0x8A5E46, e: 0xE8B040, p: 0xD68A8A),
+          playful: 0.5, sleepy: 0.6),
+    Breed(name: "Граф", kind: "толстый британец", coat: .solid,
+          palette: palette(o: 0x323A48, f: 0x8A96A8, d: 0x6E7A8C, b: 0xA2ACBC, e: 0xE89A36, p: 0xC89AA2),
+          playful: 0.35, sleepy: 0.85, size: 1.08, fat: true, speed: 0.8, eyes: .big, lids: true),
+    Breed(name: "Чита", kind: "бенгальская", coat: .tabby,
+          palette: palette(o: 0x3A2412, f: 0xD8A458, d: 0x5A3418, b: 0xF4E2C0, e: 0x9AD86A, p: 0xE89A8A),
+          playful: 0.95, sleepy: 0.3, tail: .thin, speed: 1.15),
 ]
 
 private let englishNames = [
     "Рыжик": "Ginger", "Уголёк": "Coal", "Фрак": "Tux", "Ириска": "Toffee", "Сима": "Sima",
     "Пончик": "Donut", "Добби": "Dobby", "Барон": "Baron", "Пуговка": "Button", "Снежок": "Snowball",
+    "Персик": "Peach", "Дымка": "Smoky", "Тигра": "Tiger", "Мурка": "Murka", "Бусинка": "Bead",
+    "Шоколадка": "Choco", "Граф": "Count", "Чита": "Cheetah",
 ]
 private let englishKinds = [
     "Рыжик": "ginger tabby", "Уголёк": "black", "Фрак": "tuxedo", "Ириска": "chubby calico", "Сима": "Siamese",
     "Пончик": "chubby grey-and-white", "Добби": "Sphynx", "Барон": "Maine Coon", "Пуговка": "Scottish Fold",
-    "Снежок": "white, odd-eyed",
+    "Снежок": "white, odd-eyed", "Персик": "cream tabby", "Дымка": "Russian Blue", "Тигра": "grey tabby",
+    "Мурка": "tortoiseshell", "Бусинка": "ginger-and-white", "Шоколадка": "chocolate", "Граф": "chubby British Shorthair",
+    "Чита": "Bengal",
 ]
 
 extension Breed {

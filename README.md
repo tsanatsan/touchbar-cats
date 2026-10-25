@@ -5,7 +5,7 @@
 <h1 align="center">TouchBar Cats</h1>
 
 <p align="center">
-  Десять пиксельных котиков живут на Touch Bar вашего MacBook Pro.<br>
+  Восемнадцать пиксельных котиков живут на Touch Bar вашего MacBook Pro.<br>
   Ловят буквы, которые вы печатаете, и прибегают на «кс кс кс».
 </p>
 
@@ -28,7 +28,7 @@
   <a href="#как-установить">Как установить</a> ·
   <a href="#что-умеют-котики">Что умеют котики</a> ·
   <a href="#котики">Знакомьтесь</a> ·
-  <a href="#свой-кот-из-фото">Свой кот из фото</a> ·
+  <a href="#фоны">Фоны</a> ·
   <a href="#полезное">Полезное</a> ·
   <a href="#откуда-это">Откуда это</a> ·
   <a href="#english">English</a>
@@ -83,26 +83,27 @@
 
 ### Backspace и «мяу»
 
-<img src="docs/tricks.gif" width="100%" alt="Кот сбивает лапой стёртую букву и отвечает «мрр?»">
+<img src="docs/tricks.gif" width="100%" alt="Коты сбивают стёртые буквы, а на «мяу» кто-то отвечает «мрр?»">
 
 Стёрли букву — она падает на пол, и ближайший кот сбивает её лапой. Напишите «мяу», и кто-нибудь ответит.
 
 ### Клубок
 
-<img src="docs/yarn.gif" width="100%" alt="Коты гоняют клубок">
+<img src="docs/yarn.gif" width="100%" alt="Клубок падает на ковёр, коты его гоняют">
 
 Напишите «клубок» или дважды коснитесь тачбара в любом месте: туда сверху упадёт клубок, и коты будут его гонять. Смахните клубок пальцем, и он покатится. Смахнёте сильно — улетит за край тачбара.
 
+### Лазер от тачпада
+
+<img src="docs/laser.gif" width="100%" alt="Коты гоняются за красной точкой лазера на пляже">
+
+Ведите пальцем по тачпаду, как обычно двигаете курсор, и прямо над тачпадом на тачбаре появится красная точка. Влево-вправо она ходит вместе с пальцем, а к дальнему краю тачпада поднимается вверх. Коты гоняются за ней: у пола бьют лапой или прыгают сверху, в воздухе встают на задние лапы и ловят двумя лапками или прыгают до точки. Отпустили палец — коты не замирают, а по инерции пробегают ещё немного и тормозят каждый по-своему. Выключается в «Настройках» → «Лазер от тачпада».
+
 ### Игрушки
 
-- **Лазерная указка.** Ведите пальцем по тачпаду, как обычно двигаете курсор, и прямо над тачпадом на тачбаре появится красная точка. Влево-вправо она ходит вместе с пальцем, а к дальнему краю тачпада поднимается вверх. Коты гоняются за ней и прыгают так высоко, как висит точка. Выключается в «Настройках» → «Лазер от тачпада».
 - **Мышка.** Иногда сама пробегает по краю, а ещё её можно позвать словом «мышка». Коты устраивают облаву; поймают не всегда.
 - **Коробка.** Напишите «коробка» — коты по очереди залезают внутрь, из коробки торчат только головы. Толстые Пончик и Ириска застревают.
 - **Миска.** Напишите «рыба» или «еда» — коты сбегаются к миске и едят.
-
-### Котята
-
-«Котики» → «Свои коты» → **«Завести котёнка»** и выберите маму или папу. Котёнок маленький, похож на родителя, ходит за ним хвостиком и спит рядом.
 
 ### Времена года и праздники
 
@@ -110,9 +111,13 @@
 
 ### Цвет букв
 
+<img src="docs/colors.png" width="100%" alt="Буквы цвета радуги над котами">
+
 «Котики» → **«Цвет букв»**: светлячок (жёлто-зелёный, как было), розовый, голубой, сиреневый, золотой, мятный или радуга, где каждая новая буква следующего цвета. Цвет меняется целиком: свечение, шлейф, искры и даже отсвет на шерсти котов.
 
 ### Фоны
+
+<img src="docs/backgrounds.png" width="100%" alt="Трава, ковёр, город днём, город ночью и пляж">
 
 «Котики» → **«Фон»**:
 - **чёрный** — как стекло тачбара;
@@ -137,8 +142,8 @@
 ## Котики
 
 <p align="center">
-  <img src="docs/faces-1.png" width="100%" alt="Рыжик, Добби, Уголёк, Пуговка, Снежок">
-  <img src="docs/faces-2.png" width="100%" alt="Сима, Фрак, Барон, Пончик, Ириска">
+  <img src="docs/faces-1.png" width="100%" alt="Девять котов у стекла: Рыжик, Уголёк, Фрак, Ириска, Сима, Пончик, Добби, Барон, Пуговка">
+  <img src="docs/faces-2.png" width="100%" alt="Ещё девять: Снежок, Персик, Дымка, Тигра, Мурка, Бусинка, Шоколадка, Граф, Чита">
 </p>
 
 | | Кто | Характер |
@@ -153,29 +158,20 @@
 | **Барон** | мейн-кун | самый большой, кисточки на ушах, грива |
 | **Пуговка** | вислоухая | круглая мордочка, совиные глаза |
 | **Снежок** | белый пушистый | глаза разного цвета |
+| **Персик** | кремовый полосатый | ласковый, всегда рядом |
+| **Дымка** | русская голубая | изящная, зелёные глаза |
+| **Тигра** | серый тигровый | охотник не хуже Рыжика |
+| **Мурка** | черепаховая | рыже-чёрные пятна |
+| **Бусинка** | бело-рыжая | маленькая и шустрая |
+| **Шоколадка** | шоколадная | янтарные глаза |
+| **Граф** | толстый британец | важный, медленный, медные глаза |
+| **Чита** | бенгальская | самая быстрая |
 
-Коты гуляют, умываются, спят клубком, потягиваются, зевают и трутся носами друг о друга. Того, кого вы гладите чаще всех, программа запоминает, и он сам подходит к пальцу.
+Все 18 живут на тачбаре сразу. Лишних можно отправить погулять: «Котики» → «Кто на тачбаре» или «Убрать котика». Коты гуляют, умываются, спят клубком, потягиваются, зевают и трутся носами друг о друга. Задержите палец на тачбаре — ближайшие подойдут ласкаться.
 
 ## Свой кот из фото
 
-<p align="center">
-  <img src="docs/workshop.png" width="80%" alt="Окно «Мастерская котов»: место для фото, живое превью пиксельного кота и настройки окраса">
-</p>
-
-Поселите на тачбар своего настоящего кота. Значок с котиком в строке меню → **«Котики»** → **«Сделать своего кота из фото…»**:
-
-1. Перетащите в окно фотографию своего кота или нажмите «Выбрать фото…».
-2. Через секунду справа появится его пиксельный двойник: гуляет сбоку и смотрит из-за стекла.
-3. Если что-то не так, поправьте: имя, окрас, уши, хвост, глаза, цвета (у каждого есть пипетка), «толстый» и «пушистый воротник».
-4. Нажмите **«Поселить на тачбар»** — кот забежит с края и сразу начнёт охотиться на буквы вместе со всеми.
-
-Программа сама находит кота на фото, вырезает его от фона, берёт цвет шерсти, глаз и носа и угадывает окрас: полосатый, трёхцветный, сиамский, смокинг, с белым, белый с пятнами или однотонный. Замечает даже глаза разного цвета. Вислоухость, лысость и толщину по одному фото не угадать — это переключатели в окне.
-
-Всего на тачбаре может жить **до 18 котов**: десять встроенных и восемь своих (вместе с котятами). В «Котики» → «Свои коты» своего кота можно **изменить** — поправить или перерисовать по другому фото — или **удалить**. Для точности можно выбрать сразу несколько фото одного кота: окрас определится по большинству, цвета усреднятся.
-
-### GIF тачбара
-
-«Котики» → **«Записать GIF (5 секунд)»** — пять секунд тачбара сохранятся на рабочий стол как GIF в аккуратной рамке, готовый для чатов и сторис. Пока идёт запись, в углу тачбара горит красная точка (в GIF она не попадает).
+Пока на доработке: переделываю его под новых нарисованных котов. Коты, которых вы уже сделали из фото, и котята сохранены и вернутся вместе с этой функцией.
 
 ## Полезное
 
@@ -183,8 +179,7 @@
 - **Батарея.** Мало заряда — коты вялые и много спят. Подключили зарядку — кто-то перебирается к левому краю, где порт, и греется.
 - **Статистика.** В меню «Котики» видно, сколько букв вы напечатали сегодня, сколько поймали коты, скорость печати в знаках в минуту и рекорды. Хранятся только счётчики, сами буквы нигде не сохраняются.
 - **Звуки.** Тихое мурчание, когда гладите, «мррп», когда кот поймал букву, и «мяу» в ответ. По умолчанию выключены, включаются в «Настройках».
-
-Фото разбирается прямо на вашем Mac встроенными средствами macOS (Apple Vision), никуда не отправляется и нигде не сохраняется. Программа запоминает только результат: цвета, окрас и имя. Вырезание кота от фона работает на macOS 14 и новее.
+- **GIF тачбара.** «Котики» → «Записать GIF (5 секунд)» — пять секунд тачбара сохранятся на рабочий стол как GIF в аккуратной рамке, готовый для чатов и сторис. Пока идёт запись, в углу тачбара горит красная точка (в GIF она не попадает).
 
 ## Слова и касания
 
@@ -219,11 +214,12 @@
 | дважды коснитесь клубка | кот уносит его в зубах |
 | ведите пальцем по тачпаду | лазерная указка над тачпадом |
 
-**Меню.** Нажмите на значок с котиком в строке меню. Там всего четыре пункта:
+**Меню.** Нажмите на значок с котиком в строке меню:
 
 - **«Обычный тачбар»** — то же, что ⌃⌥⌘T;
-- **«Котики»** — статистика за сегодня, добавить или убрать кота, **«Свои коты»** (сделать из фото, завести котёнка, изменить, удалить), запись GIF, выбрать, кто живёт на тачбаре, вечная ночь или вечный день, фон, цвет букв;
-- **«Настройки»** — запуск при входе, тактильный отклик, полоса управления, жесты громкости и яркости, скрыть котов в текущей программе, сезоны и праздники, звуки, лазер от тачпада, файл конфига и **язык: русский или английский**;
+- **«Котики»** — статистика за сегодня, добавить или убрать котика, **«Кто на тачбаре»**, **«Фон»**, **«Цвет букв»**, **«День и ночь»** и запись GIF;
+- **«Облака»** — облака вместо котиков;
+- **«Настройки»** — запуск при входе и **язык: русский или английский**, потом коротко про котиков (лазер, сезоны, звуки) и про тачбар (жесты громкости и яркости, полоса управления, тактильный отклик, скрыть котов в текущей программе); файл конфига — в «Для продвинутых»;
 - **«Выйти»**.
 
 ## Это безопасно?
@@ -232,8 +228,7 @@
 - В интернет программа не ходит вообще.
 - В полях для паролей macOS сама прячет нажатия от всех программ, так что пароли на тачбар не попадут.
 - Сочетания с ⌘, ⌃ и ⌥ светлячками не становятся.
-- Батарею коты почти не едят: около 5% одного ядра с десятью котами на MacBook Pro M1 (с городом или пляжем — около 7%), примерно как вкладка браузера с лёгкой анимацией. Нужно совсем ноль — включите обычный тачбар по ⌃⌥⌘T, коты встанут на паузу.
-- Фото для своего кота разбирается прямо на Mac и не сохраняется.
+- Батарею коты почти не едят: около 8% одного ядра со всеми 18 котами на MacBook Pro M1, примерно как вкладка браузера с лёгкой анимацией. Нужно совсем ноль — включите обычный тачбар по ⌃⌥⌘T, коты встанут на паузу.
 - Весь код открыт, его можно прочитать в этом репозитории.
 
 ## Откуда это
@@ -242,7 +237,11 @@
 
 **Огромное спасибо Антону Пальгунову и всем, кто делал MTMR, за то, что выложили код в открытый доступ.** Без них этой забавы бы не было.
 
+**Котов нарисовал [Last tick](https://last-tick.itch.io)**: это бесплатный набор [32x32 Pixel kittens Cats](https://last-tick.itch.io/animated-pixel-kittens-cats-32x32). Программа берёт оттуда одного кота со всеми его анимациями и сама перекрашивает и переделывает его под каждую из 18 пород. Спасибо за таких живых и милых котиков!
+
 TouchBar Cats я раздаю точно так же: бесплатно и с открытым кодом под лицензией [MIT](LICENSE). Берите, меняйте, дарите своим котам.
+
+> **Графика котов и облаков — не под MIT.** Под MIT только код этого репозитория. Котов Last tick и облака [CraftPix](https://craftpix.net/freebies/free-sky-with-clouds-background-pixel-art-set/) можно использовать внутри программы, но нельзя раздавать сами файлы, ни исходные, ни изменённые. Поэтому их нет в репозитории: они упакованы только в готовую программу. Если собираете из исходников, скачайте наборы со страниц авторов и положите их, как описано в «Для разработчиков» ниже — без них коты рисуются прежним способом.
 
 <details>
 <summary><b>Для разработчиков: сборка из исходников и настройка</b></summary>
@@ -261,7 +260,7 @@ cd touchbar-cats
 make run
 ```
 
-Облака при сборке берутся из папки `../clouds-art` рядом с репозиторием (или `CLOUDS_ART=путь make`). Если её нет, режим облаков показывает только загруженные из меню. `make install` копирует программу в «Программы», `make release` собирает универсальный архив для Apple Silicon и Intel, `ARCH=x86_64 make` — сборку только под Intel. Подпись сборки привязана к идентификатору программы, поэтому разрешение «Универсального доступа» не слетает после пересборки.
+Коты рисуются по листу спрайтов из папки `../cat-art` (файл `CatBase.png`, или `CAT_ART=путь make`), собранному из набора [Last tick](https://last-tick.itch.io/animated-pixel-kittens-cats-32x32): один кот на 59 анимаций, которого программа сама перекрашивает и переделывает под каждую породу. Этот лист, как и облака, можно класть только внутрь программы, поэтому в репозитории его нет. Без него коты рисуются прежним способом. Облака при сборке берутся из папки `../clouds-art` рядом с репозиторием (или `CLOUDS_ART=путь make`). Если её нет, режим облаков показывает только загруженные из меню. `make install` копирует программу в «Программы», `make release` собирает универсальный архив для Apple Silicon и Intel, `ARCH=x86_64 make` — сборку только под Intel. Подпись сборки привязана к идентификатору программы, поэтому разрешение «Универсального доступа» не слетает после пересборки.
 
 **Конфиг** лежит в `~/Library/Application Support/MTMR/items.json`, формат тот же, что у MTMR. По умолчанию там только коты:
 
@@ -285,7 +284,7 @@ make run
 
 **Где что лежит:**
 
-- `MTMR/Cats/` — коты: породы и окрасы, пиксельные позы, поведение, отрисовка со светом от букв, элемент тачбара, мастерская своих котов и разбор фото через Vision;
+- `MTMR/Cats/` — коты: породы и окрасы, пиксельные позы, поведение, отрисовка со светом от букв, элемент тачбара, мастерская своих котов и разбор фото через Vision (пока выключены: `ownCatsFrozen` в `CatBreeds.swift`);
 - `MTMR/Widgets/ControlStripSliderItem.swift` — громкость и яркость в стиле Apple;
 - `MTMR/GlobalHotKey.swift` — сочетание ⌃⌥⌘T;
 - `build-local.sh` — сборка без Xcode.
@@ -306,25 +305,27 @@ make run
 
 <p align="center"><a href="https://github.com/tsanatsan/touchbar-cats/releases/latest/download/TouchBar-Cats.zip"><b>⬇ Download TouchBar Cats</b></a></p>
 
-**TouchBar Cats** puts ten pixel cats on your MacBook Pro Touch Bar.
+**TouchBar Cats** puts eighteen pixel cats on your MacBook Pro Touch Bar.
 
 - **Letters become fireflies.** Every key you press flies up on the Touch Bar right above its key and lights up the cats around it. The nearest playful cat stalks it, wiggles and pounces. At night (23:00–7:00) there are stars and a moon, and the cats' eyes glow.
 - **Type «кс» or `ks` again and again** — the Russian way to call a cat. With each one the cats come closer, turn to face you and press their noses and paws against the glass.
 - **Backspace** drops the last letter and a cat swats it away. Type `meow` and a cat answers. Type `yarn` or double-tap anywhere to drop a ball of yarn; flick it to roll it, flick hard to throw it off the bar.
 - **Touch them:** rest or move a finger on the bar and the nearest cats come over to rub against it; slowly move it over a cat to pet it, tap a sleeping cat to wake it, tap a face at the glass to boop it, flick the ball of yarn (even out of a cat's mouth).
-- **Ten cats:** ginger tabby, black, tuxedo, chubby calico, Siamese, chubby grey-and-white, hairless Sphynx, Maine Coon, Scottish Fold and an odd-eyed white fluffball.
-- **Your own cat from a photo:** Cats → *Make your own cat from a photo…*, drop a picture and get a pixel twin with the same coat, colors and even odd eyes, then tweak it and move it onto the Touch Bar. Up to 18 cats in total. The photo is analyzed on your Mac with Apple Vision and never stored or sent.
-- **Laser pointer from the trackpad:** move the cursor and a red dot appears on the bar right above the trackpad, rising as your finger goes to the far edge. The cats chase it and leap as high as it is. Can be turned off in Settings.
+- **Eighteen cats, all on the bar at once:** ginger tabby, black, tuxedo, chubby calico, Siamese, chubby grey-and-white, hairless Sphynx, Maine Coon, Scottish Fold, odd-eyed white, cream tabby, Russian Blue, grey tabby, tortoiseshell, ginger-and-white, chocolate, chubby British Shorthair and Bengal. Send some out for a walk in Cats → *Who's on the bar*.
+- **Laser pointer from the trackpad:** move the cursor and a red dot appears on the bar right above the trackpad, rising as your finger goes to the far edge. The cats chase it, swat it on the floor, clap it between their paws in the air or leap for it, and coast to a stop when you let go. Can be turned off in Settings.
 - **Words:** type `fish`/`food` (bowl), `box`, `mouse`, `hello`, `bad`, `sleep`, a cat's name, or `cat 25` for a 25-minute pomodoro. A word counts after a space or a short pause, and its letters burst into sparks when the cats get it.
 - **Letter color:** firefly, pink, blue, lilac, gold, mint or rainbow. The glow, the trail, the sparks and the light on the cats' fur all follow it.
 - **Clouds instead of cats:** drifting pixel skies with parallax layers; swipe one finger for the next of 28 skies, two and three fingers still set volume and brightness. Load your own pictures from the menu. The clouds are a free [CraftPix](https://craftpix.net) set that may only ship inside the app, so the pictures are not in the repository.
 - **Backgrounds:** black, grass, a burgundy Soviet carpet, a city or a beach. The city and the beach follow the clock: dawn, noon, sunset and night, with the sun crossing the bar and windows lighting up after dark.
-- **Kittens** that follow their parent, **seasons and holidays** (snow, leaves, Santa hats, Halloween pumpkins), quiet **sounds** (off by default).
+- **Seasons and holidays** (snow, leaves, Santa hats, Halloween pumpkins), quiet **sounds** (off by default).
 - **Useful bits:** sleepy cats on low battery and a cat warming up by the charging port, typing stats in the menu, and a 5-second **GIF** of the Touch Bar saved to the Desktop.
 - **⌃⌥⌘T** swaps to the regular Touch Bar and back.
+- **Your own cat from a photo** is being reworked for the new cats and will be back; cats you already made are kept.
 
-**Install:** download the zip, unzip it, drag **TouchBar Cats** into Applications and open it. macOS will say it can't verify the app — it's free and not notarized — so press **Done**, then go to **System Settings → Privacy & Security** and click **Open Anyway**. Finally allow it in **Privacy & Security → Accessibility** so the cats can see your key presses. Letters are only drawn, never stored or sent, the app makes no network requests at all, and password fields are hidden by macOS Secure Input. The cat icon in the menu bar has everything else: the regular Touch Bar, the **Cats** menu (letters caught today, add or remove cats, night mode), **Settings** (open at login, haptics, Control Strip, gestures, config, **language: Russian or English**) and **Quit**.
+**Install:** download the zip, unzip it, drag **TouchBar Cats** into Applications and open it. macOS will say it can't verify the app — it's free and not notarized — so press **Done**, then go to **System Settings → Privacy & Security** and click **Open Anyway**. Finally allow it in **Privacy & Security → Accessibility** so the cats can see your key presses. Letters are only drawn, never stored or sent, the app makes no network requests at all, and password fields are hidden by macOS Secure Input. The cat icon in the menu bar has everything else: the regular Touch Bar, the **Cats** menu (today's stats, add or remove cats, who's on the bar, background, letter color, day and night, GIF), **Clouds**, **Settings** (open at login, **language: Russian or English**, the cats' and the Touch Bar's options, config under *Advanced*) and **Quit**.
 
-**Where it comes from:** I took [MTMR](https://github.com/Toxblh/MTMR) by Anton Palgunov — open source and the easiest way into the Touch Bar — cut almost everything out and moved the cats in. Huge thanks to Anton and all MTMR contributors for sharing their code. TouchBar Cats is shared the same way: free and open source under the [MIT](LICENSE) license.
+**Where it comes from:** I took [MTMR](https://github.com/Toxblh/MTMR) by Anton Palgunov — open source and the easiest way into the Touch Bar — cut almost everything out and moved the cats in. Huge thanks to Anton and all MTMR contributors for sharing their code. The cats are drawn by [Last tick](https://last-tick.itch.io) — the free [32x32 Pixel kittens Cats](https://last-tick.itch.io/animated-pixel-kittens-cats-32x32) pack, recolored and reshaped by the app for every breed; thank you for such lively cats! TouchBar Cats is shared the same way as MTMR: free and open source under the [MIT](LICENSE) license.
+
+> **The cat and cloud art is not under MIT.** Only the code in this repository is. Last tick's cats and the [CraftPix](https://craftpix.net/freebies/free-sky-with-clouds-background-pixel-art-set/) clouds may be used inside the app, but the files themselves may not be shared, original or edited, so they are not in the repository and ship only inside the built app. When building from source, get the packs from their authors' pages; without them the cats are drawn the old way.
 
 Tested on a 13″ M1 MacBook Pro with macOS 26. Build from source: `make run` (Command Line Tools only).

@@ -173,10 +173,15 @@ extension CatScene {
         let lights = flies.filter { $0.alive && $0.isLit }.map { (x: $0.x, y: $0.y, a: $0.a, c: theme.light($0.tint).p3) }
         for f in flies where !f.isLit { drawFly(f, theme, ctx) }
         if let ball = ball, !ball.held { drawBall(ball, ctx) }
-        let order = cats.sorted { a, b in
-            let fa = a.mode == .front ? 1 + a.cl : 0, fb = b.mode == .front ? 1 + b.cl : 0
-            return fa != fb ? fa < fb : a.jy < b.jy
-        }
+        // a steady order: faces at the glass in front, cats in the air before those on the ground, otherwise
+        // always the same, so overlapping cats never swap places from one frame to the next (that flickers)
+        let order = cats.enumerated().sorted { a, b in
+            let fa = a.element.mode == .front ? 1 + a.element.cl : 0, fb = b.element.mode == .front ? 1 + b.element.cl : 0
+            if fa != fb { return fa < fb }
+            let ja = a.element.jy > 0.5, jb = b.element.jy > 0.5
+            if ja != jb { return jb }
+            return a.offset < b.offset
+        }.map { $0.element }
         for cat in order { drawCat(cat, lights: lights, ctx) }
         for f in flies where f.isLit { drawFly(f, theme, ctx) }
         drawExtrasFront(ctx)
@@ -225,6 +230,10 @@ extension CatScene {
     // MARK: - Cats
 
     private func drawCat(_ cat: Cat, lights: [(x: CGFloat, y: CGFloat, a: CGFloat, c: RGB)], _ ctx: CGContext) {
+        if cat.mode != .front, let pack = CatPack.shared { // the close-up at the glass stays our own drawing
+            drawPackCat(cat, pack, lights: lights, ctx)
+            return
+        }
         let (w, h, screen) = spriteScreen(cat, t: t, dark: dark)
         let front = cat.mode == .front
 
@@ -333,6 +342,192 @@ extension CatScene {
         }
 
         if dark > 0 && eyes.count < 20 {
+            let r = 2.2 * min(sx, 1.2)
+            for (ex, ey, color) in eyes {
+                let key = Int(color.r) << 16 | Int(color.g) << 8 | Int(color.b)
+                let g = eyeGlows[key] ?? gradient(color, 0.35)
+                eyeGlows[key] = g
+                ctx.saveGState()
+                ctx.setAlpha(dark)
+                ctx.drawRadialGradient(g, startCenter: CGPoint(x: ex, y: ey), startRadius: 0, endCenter: CGPoint(x: ex, y: ey), endRadius: r, options: [])
+                ctx.restoreGState()
+            }
+        }
+    }
+
+    // MARK: - The pack's cat
+
+    /// Which frame of the pack's sheet shows what the cat is doing now, and whether its eyes are shut
+    func packPose(_ cat: Cat) -> (row: Int, col: Int, shut: Bool) {
+        let right = cat.dir >= 0
+        func loop(_ a: PackAnim, speed: CGFloat = 1) -> (Int, Int) {
+            return (right ? a.right : a.left, Int(cat.mt * a.fps * speed) % a.frames)
+        }
+        func once(_ a: PackAnim) -> (Int, Int) { // spread over the time the mode lasts
+            let k = Int(cat.mt / max(0.05, cat.dur) * CGFloat(a.frames))
+            return (right ? a.right : a.left, max(0, min(a.frames - 1, k)))
+        }
+        let blink = (t * 1000 + CGFloat(cat.seed) * 373).truncatingRemainder(dividingBy: 3700) < 130
+        var shut = blink || cat.happy > 0
+        var pose: (Int, Int)
+        switch cat.mode {
+        case .walk, .enter, .come, .boopGo, .eatGo, .boxGo, .warmGo, .swatGo, .carry:
+            pose = loop(.walk, speed: cat.breed.speed)
+        case .run, .hunt, .ballChase, .fetch, .attend, .laserChase, .mouseHunt, .exit:
+            pose = loop(.run)
+        case .laserCoast: // slowing down after the laser: the legs slow with the body, from a gallop to a walk
+            let a: PackAnim = abs(cat.coast.v) > 40 ? .run : .walk
+            pose = (right ? a.right : a.left, Int(cat.frame * 0.3) % a.frames)
+        case .crouch:
+            pose = loop(.stalk, speed: 2.4) // the wiggle before the leap
+        case .jump: // push off, fly, stretch for the landing, touch down
+            let k = cat.jump?.t ?? 0
+            pose = (right ? PackAnim.jump.right : PackAnim.jump.left, k < 0.12 ? 0 : (k < 0.5 ? 1 : (k < 0.88 ? 2 : 3)))
+        case .laserSwat:
+            pose = once(.swat)
+        case .laserClap:
+            pose = once(.hindLegs)
+        case .loaf, .pomodoro, .warm:
+            pose = loop(.sleep)
+            shut = true
+        case .stretch:
+            pose = (right ? PackAnim.stretchOut.right : PackAnim.stretchOut.left, 0)
+            shut = true
+        case .yawn:
+            pose = once(.yawn)
+            shut = true
+        case .groom:
+            pose = loop(.wash)
+            shut = true
+        case .munch:
+            pose = loop(.munch)
+        case .eat:
+            pose = loop(.eat)
+        case .wave:
+            pose = once(.hindLegs)
+        case .sulk:
+            pose = (0, 1) // sitting with its back to us
+        case .swat:
+            pose = once(.swat)
+        case .inBox:
+            pose = (0, 0)
+        default: // sit, boop, front: sitting sideways, looking where it faces
+            pose = (0, right ? 3 : 2)
+            if cat.meowT > 0 { pose = (PackAnim.meow.right, min(2, Int((0.6 - cat.meowT) * 6))) }
+        }
+        return (pose.0, pose.1, shut)
+    }
+
+    private func drawPackCat(_ cat: Cat, _ pack: CatPack, lights: [(x: CGFloat, y: CGFloat, a: CGFloat, c: RGB)], _ ctx: CGContext) {
+        let pose = packPose(cat)
+        guard let s = pack.sprite(cat.breed, row: pose.row, col: pose.col) else { return }
+        let n = CatPack.cell
+        var sx = cat.breed.size, sy = cat.breed.size
+        if cat.land > 0 { // a squash on landing
+            let q = cat.land / 0.18
+            sx *= 1 + 0.1 * q
+            sy *= 1 - 0.12 * q
+        }
+        let left = snap(cat.x) - CGFloat(n) / 2 * sx
+        // the whole animation stands on one line, where its paws touch the ground: frames with the legs tucked
+        // stay up instead of sinking, so a walk doesn't bob and a gallop leaves the ground
+        // (row 0 holds different sitting poses side by side, each stands on its own)
+        let base = pose.row == 0 ? s.bottom : pack.baseline(cat.breed, row: pose.row)
+        let top = ground - CGFloat(base + 1) * sy - snap(cat.jy)
+        let shadow = max(0.4, 1 - cat.jy / 14)
+        ctx.setFillColor(red: 1, green: 1, blue: 1, alpha: 0.05 * (1 - dark * 0.6))
+        ctx.fillEllipse(in: CGRect(x: snap(cat.x) - 8 * sx * shadow, y: height - 2.1, width: 16 * sx * shadow, height: 2.2))
+
+        var colors = s.colors // copied only when a hat goes on
+        // a Santa hat on top of the head, tilted back
+        if CatDecor.hats, let nose = s.nose {
+            var headTop = n
+            for x in max(0, nose.x - 3) ... min(n - 1, nose.x + 3) { for y in 0 ..< n where colors[y * n + x] != nil { headTop = min(headTop, y); break } }
+            let back = pose.row == 0 && pose.col <= 1 || [20, 28, 32, 36, 52].contains(pose.row) ? -1 : (cat.dir >= 0 ? -1 : 1)
+            let red = cat.breed.color(.hatRed).p3, white = cat.breed.color(.hatWhite).p3
+            func put(_ x: Int, _ y: Int, _ c: RGB) {
+                guard x >= 0, y >= 0, x < n, y < n else { return }
+                colors[y * n + x] = UInt32(max(0, min(255, c.r))) << 16 | UInt32(max(0, min(255, c.g))) << 8 | UInt32(max(0, min(255, c.b)))
+            }
+            // white brim on the head, the red cap above it bending back, a white pompom at the tip
+            let cx = nose.x, y0 = max(3, headTop)
+            for dx in -2 ... 2 { put(cx + dx, y0, white) }
+            for dx in -1 ... 1 { put(cx + dx, y0 - 1, red) }
+            put(cx + back, y0 - 2, red)
+            put(cx + back * 2, y0 - 2, red)
+            put(cx + back * 3, y0 - 2, white)
+        }
+
+        let reachLight: CGFloat = 40
+        let near = lights.filter { abs($0.x - cat.x) < 50 + CGFloat(n) * sx / 2 }
+        func empty(_ x: Int, _ y: Int) -> Bool { return x < 0 || y < 0 || x >= n || y >= n || colors[y * n + x] == nil }
+        let outline = cat.breed.color(.outline).p3
+        var eyes: [(CGFloat, CGFloat, RGB)] = []
+        // only the box around the cat (and its hat) becomes an image: a third of the cell
+        let x0 = max(0, s.minX - 3), x1 = min(n - 1, s.maxX + 3), y0 = max(0, s.top - 3), y1 = s.bottom
+        let bw = x1 - x0 + 1, bh = y1 - y0 + 1
+        var pixels = [UInt8](repeating: 0, count: bw * bh * 4)
+        for y in y0 ... y1 { for x in x0 ... x1 {
+            guard let packed = colors[y * n + x] else { continue }
+            var base = RGB(r: CGFloat(packed >> 16), g: CGFloat((packed >> 8) & 0xFF), b: CGFloat(packed & 0xFF))
+            let wx = left + (CGFloat(x) + 0.5) * sx, wy = top + (CGFloat(y) + 0.5) * sy
+            let isEye = s.eyes.contains(y * n + x)
+            if isEye && pose.shut { base = outline }
+            var amb: CGFloat = 0, rim: CGFloat = 0
+            var lr: CGFloat = 0, lg: CGFloat = 0, lb: CGFloat = 0
+            for l in near {
+                let vx = l.x - wx, vy = l.y - wy
+                let d = hypot(vx, vy) + 0.01
+                if d > reachLight { continue }
+                let i = l.a * (1 - d / reachLight)
+                amb += i
+                lr += l.c.r * i
+                lg += l.c.g * i
+                lb += l.c.b * i
+                var best: CGFloat = 0
+                if empty(x - 1, y) { best = max(best, -vx / d) }
+                if empty(x + 1, y) { best = max(best, vx / d) }
+                if empty(x, y - 1) { best = max(best, -vy / d) }
+                if empty(x, y + 1) { best = max(best, vy / d) }
+                rim = max(rim, i * best)
+            }
+            let light = amb > 0 ? RGB(r: lr / amb, g: lg / amb, b: lb / amb) : RGB(0xFFFFFF)
+            amb = min(1, amb)
+            var col: RGB
+            if isEye && !pose.shut {
+                col = dark > 0 ? base.mixed(RGB(0xFFFFFF), 0.25) : (amb > 0.25 ? base.mixed(RGB(0xFFFFFF), 0.4) : base)
+                eyes.append((wx, wy, base))
+            } else {
+                col = base.mixed(nightTintP3, dark * (1 - 0.85 * amb))
+                col = col.mixed(light, amb * 0.12)
+                col = col.mixed(light, min(0.75, rim * 1.1))
+            }
+            let i = ((y - y0) * bw + x - x0) * 4
+            pixels[i] = UInt8(max(0, min(255, col.r)))
+            pixels[i + 1] = UInt8(max(0, min(255, col.g)))
+            pixels[i + 2] = UInt8(max(0, min(255, col.b)))
+            pixels[i + 3] = 255
+        } }
+        if let provider = CGDataProvider(data: Data(pixels) as CFData),
+           let image = CGImage(width: bw, height: bh, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: bw * 4, space: displaySpace,
+                               bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                               provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent) {
+            ctx.saveGState()
+            ctx.interpolationQuality = sx < 0.95 ? .medium : .none // kittens are scaled down smoothly, the rest stay crisp
+            ctx.translateBy(x: left + CGFloat(x0) * sx, y: top + CGFloat(y1 + 1) * sy) // the view is flipped, images are not
+            ctx.scaleBy(x: 1, y: -1)
+            ctx.draw(image, in: CGRect(x: 0, y: 0, width: CGFloat(bw) * sx, height: CGFloat(bh) * sy))
+            ctx.restoreGState()
+        }
+        // the yarn ball in its mouth
+        if cat.carrying, let nose = s.nose {
+            let bx = left + (CGFloat(nose.x) + (cat.dir >= 0 ? 1.5 : -1.5)) * sx, by = top + (CGFloat(nose.y) + 2.5) * sy
+            ctx.setFillColor(red: 0.95, green: 0.48, blue: 0.6, alpha: 1)
+            ctx.fillEllipse(in: CGRect(x: bx - 2, y: by - 2, width: 4, height: 4))
+            ctx.setFillColor(red: 0.78, green: 0.27, blue: 0.41, alpha: 1)
+            ctx.fill(CGRect(x: bx - 1, y: by - 0.5, width: 2, height: 0.6))
+        }
+        if dark > 0 && !eyes.isEmpty && eyes.count < 8 {
             let r = 2.2 * min(sx, 1.2)
             for (ex, ey, color) in eyes {
                 let key = Int(color.r) << 16 | Int(color.g) << 8 | Int(color.b)

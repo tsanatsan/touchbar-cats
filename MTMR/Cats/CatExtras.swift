@@ -322,7 +322,7 @@ extension CatScene {
 
     var extrasLively: Bool {
         if extras.laser.active || extras.mouse != nil || extras.bowl != nil { return true }
-        let moving: [CatMode] = [.eatGo, .boxGo, .warmGo, .laserChase, .mouseHunt, .wave]
+        let moving: [CatMode] = [.eatGo, .boxGo, .warmGo, .laserChase, .laserCoast, .laserSwat, .laserClap, .mouseHunt, .wave]
         return cats.contains { moving.contains($0.mode) }
     }
 
@@ -396,7 +396,7 @@ extension CatScene {
             return
         }
         guard laser.active else { return }
-        for cat in cats where [.sit, .walk, .groom, .run, .boop].contains(cat.mode) && cat.breed.playful > 0.35 &&
+        for cat in cats where [.sit, .walk, .groom, .run, .boop, .laserCoast].contains(cat.mode) && cat.breed.playful > 0.35 &&
             abs(cat.x - laser.x) < 400 && Bool.random() {
             cat.setMode(.laserChase, 99)
         }
@@ -417,6 +417,28 @@ extension CatScene {
             CatTrackpad.shared.start()
         } else {
             CatTrackpad.shared.stop()
+        }
+    }
+
+    /// At the dot, each cat does its own thing: low down it taps with a paw or pounces, up in the air it rises
+    /// on its hind legs and claps both paws on it, or leaps. Sometimes it crouches and waits a moment first,
+    /// so a crowd at the dot doesn't move as one.
+    private func laserReaction(_ cat: Cat, _ dot: LaserDot) {
+        cat.prey = nil
+        cat.dir = dot.x >= cat.x ? 1 : -1
+        let low = dot.y > ground - 9
+        let r = CGFloat.random(in: 0 ... 1)
+        if low && r < 0.45 {
+            cat.setMode(.laserSwat, rnd(0.5, 0.7))
+        } else if !low && r < 0.4 {
+            cat.setMode(.laserClap, rnd(0.7, 0.9))
+        } else if r < 0.6 && cat.mode != .crouch {
+            cat.tx = dot.x
+            cat.setMode(.crouch, rnd(0.2, 0.5)) // the wiggle, then a pounce at where the dot is by then
+        } else {
+            let h = clamp(ground - dot.y - 6, 4, 15)
+            cat.jump = Jump(from: cat.x, to: clamp(dot.x + cat.dir * 3, 10, width - 10), t: 0, h: h)
+            cat.setMode(.jump, 0.5)
         }
     }
 
@@ -567,17 +589,41 @@ extension CatScene {
         switch cat.mode {
         case .laserChase:
             guard e.laser.active else {
-                cat.setMode(.sit, 1.5)
+                // the dot is gone, but nobody stops dead: each runs on and slows down in its own way,
+                // some carry on a good way, some skid to a halt almost at once
+                let speed = 95 * cat.breed.speed * rnd(0.75, 1)
+                cat.coast = (cat.dir * speed, Bool.random() ? rnd(0.8, 1.6) : rnd(1.8, 3.4), rnd(0, 0.35))
+                cat.setMode(.laserCoast, 99)
                 return
             }
-            if abs(e.laser.x - cat.x) < 8 {
-                // a pounce on the floor, or a leap as high as the dot
-                let h = clamp(ground - e.laser.y - 6, 4, 15)
-                cat.prey = nil
-                cat.jump = Jump(from: cat.x, to: clamp(e.laser.x + cat.dir * 3, 10, width - 10), t: 0, h: h)
-                cat.setMode(.jump, 0.5)
+            if abs(e.laser.x - cat.x) < 9 {
+                laserReaction(cat, e.laser)
             } else {
                 moveTo(cat, e.laser.x, 95, dt)
+            }
+        case .laserSwat, .laserClap:
+            // a paw tap on the floor or two paws clapped on the dot in the air; then back to the chase
+            if cat.mt >= cat.dur { cat.setMode(e.laser.active ? .laserChase : .sit, e.laser.active ? 99 : rnd(1, 2)) }
+        case .laserCoast:
+            var c = cat.coast
+            if cat.mt > c.hold { c.v *= exp(-c.drag * dt) } // a moment at full tilt, then the brakes
+            let before = cat.x
+            cat.x = clamp(cat.x + c.v * dt, 8, width - 8)
+            if cat.x == before && abs(c.v) > 0 { c.v *= 0.5 } // ran into the edge
+            cat.frame += dt * abs(c.v) * 0.42 * cat.breed.speed
+            cat.coast = c
+            if abs(c.v) < 7 {
+                // and then: look around for the dot, turn back to where it was, or pretend nothing happened
+                let r = CGFloat.random(in: 0 ... 1)
+                if r < 0.45 {
+                    cat.look = rnd(1, 2)
+                    cat.setMode(.sit, rnd(1.5, 3))
+                } else if r < 0.75 {
+                    cat.dir = -cat.dir
+                    cat.setMode(.sit, rnd(1.2, 2.5))
+                } else {
+                    cat.setMode(.groom, rnd(1.5, 3))
+                }
             }
         case .mouseHunt:
             guard let m = e.mouse, m.hunter === cat else {

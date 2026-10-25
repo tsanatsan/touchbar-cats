@@ -58,6 +58,15 @@ final class CatsView: NSView {
         return NSSize(width: NSView.noIntrinsicMetric, height: 30)
     }
 
+    /// The Touch Bar lines items up from its right edge, so a full-width view starts a few points left of the glass,
+    /// where nothing is seen (a speech bubble there was cut in half). The view is narrowed by that much.
+    private func fitToGlass() {
+        guard window != nil else { return }
+        let left = convert(NSPoint.zero, to: nil).x
+        let width = min(preferredWidth, max(100, widthConstraint.constant + left).rounded())
+        if abs(width - widthConstraint.constant) >= 1 { widthConstraint.constant = width }
+    }
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         if window == nil {
@@ -87,6 +96,7 @@ final class CatsView: NSView {
             return
         }
         let scene = CatScene.shared
+        fitToGlass()
         if bounds.width > 0 { scene.width = bounds.width }
         scene.advance(to: CACurrentMediaTime())
         if !scene.paused && !scene.systemAsleep { needsDisplay = true }

@@ -104,6 +104,16 @@ else
     echo "==> No cloud art ($CLOUDS_ART): the clouds mode will only show your own"
 fi
 
+# The pack's cat (licensed for use inside the app only, like the clouds) comes from a folder next to the repository;
+# without it the cats are drawn the old way
+CAT_ART=${CAT_ART:-../cat-art}
+if [ -f "$CAT_ART/CatBase.png" ]; then
+    echo "==> Cat sprites from $CAT_ART"
+    cp "$CAT_ART/CatBase.png" "$RES/CatBase.png"
+else
+    echo "==> No cat sprites ($CAT_ART/CatBase.png): the cats are drawn the old way"
+fi
+
 echo "==> Signing (ad-hoc)"
 # Requirement by bundle id instead of the default cdhash: macOS privacy permissions
 # (Accessibility for the keyboard) stay granted after every rebuild.

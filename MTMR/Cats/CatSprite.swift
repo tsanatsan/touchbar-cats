@@ -207,7 +207,7 @@ private func sidePose(_ cat: Cat, t: CGFloat) -> SpriteCanvas {
 
     switch cat.mode {
     case .walk, .run, .hunt, .attend, .come, .swatGo, .ballChase, .fetch, .carry, .enter, .exit, .boopGo,
-         .eatGo, .boxGo, .warmGo, .laserChase, .mouseHunt:
+         .eatGo, .boxGo, .warmGo, .laserChase, .laserCoast, .mouseHunt:
         let bob = (cat.mode != .walk && cat.mode != .enter && frame % 2 == 1) ? 1 : 0
         let legTop: Int
         if fat {
@@ -306,7 +306,7 @@ private func sidePose(_ cat: Cat, t: CGFloat) -> SpriteCanvas {
 
     default: // sit, groom, yawn, munch, boop, swat, eat, wave, sulk, inBox
         let groom = cat.mode == .groom, yawn = cat.mode == .yawn, munch = cat.mode == .munch || cat.mode == .eat
-        let swat = cat.mode == .swat, wave = cat.mode == .wave, sulk = cat.mode == .sulk
+        let swat = cat.mode == .swat || cat.mode == .laserSwat, wave = cat.mode == .wave || cat.mode == .laserClap, sulk = cat.mode == .sulk
         let pawUp = groom && Int(t * 3) % 2 == 0
         let hd = groom ? 1 : 0
         if fat {
