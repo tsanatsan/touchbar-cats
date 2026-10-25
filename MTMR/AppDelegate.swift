@@ -16,6 +16,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var nativeTouchBarHotKey: GlobalHotKey?
 
     func applicationDidFinishLaunching(_: Notification) {
+        if AppSettings.cloudsMode {
+            if CloudScene.shared.sets.isEmpty { // a build without cloud art: back to the cats
+                AppSettings.cloudsMode = false
+                if !AppSettings.nativeTouchBar { CatScene.shared.walkIn() }
+            } else {
+                CloudScene.shared.show()
+            }
+        }
         AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeRetainedValue() as NSString: true] as NSDictionary)
 
         TouchBarController.shared.setupControlStripPresence()
@@ -164,6 +172,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         native.keyEquivalentModifierMask = [.command, .option, .control]
         menu.addItem(native)
         menu.addItem(submenu(tr("Котики", "Cats"), "cats"))
+        menu.addItem(submenu(tr("Облака", "Clouds"), "clouds"))
 
         let appName = NSWorkspace.shared.frontmostApplication?.localizedName ?? tr("этой программе", "this app")
         let language = AppLanguage(rawValue: AppSettings.language) ?? .system
@@ -221,6 +230,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension AppDelegate: NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
+        if menu.identifier?.rawValue == "clouds" {
+            fillCloudsMenu(menu)
+            return
+        }
         guard menu.identifier?.rawValue == "cats" else { return }
         let scene = CatScene.shared
         menu.removeAllItems()
@@ -359,5 +372,97 @@ extension AppDelegate: NSMenuDelegate {
 
     @objc func setCatsNight(_ item: NSMenuItem) {
         CatScene.shared.nightMode = item.tag
+    }
+}
+
+// MARK: - Clouds menu
+
+extension AppDelegate {
+    func fillCloudsMenu(_ menu: NSMenu) {
+        let clouds = CloudScene.shared
+        menu.removeAllItems()
+        if clouds.sets.isEmpty {
+            let none = item(tr("В этой сборке облаков нет", "No clouds in this build"), nil)
+            none.isEnabled = false
+            menu.addItem(none)
+        } else {
+            menu.addItem(item(tr("Облака вместо котиков", "Clouds instead of cats"), #selector(toggleClouds(_:)), on: AppSettings.cloudsMode))
+            menu.addItem(item(tr("Облака плывут", "Clouds drift"), #selector(toggleCloudDrift(_:)), on: clouds.drifting))
+            let hint = item(tr("Свайп по тачбару — другие облака", "Swipe the Touch Bar for other clouds"), nil)
+            hint.isEnabled = false
+            menu.addItem(hint)
+            menu.addItem(NSMenuItem.separator())
+            for (i, set) in clouds.sets.enumerated() {
+                if i == clouds.sets.count - clouds.ownCount && clouds.ownCount > 0 { menu.addItem(NSMenuItem.separator()) }
+                let row = item(set.name, #selector(selectClouds(_:)), on: AppSettings.cloudsMode && clouds.index == i)
+                row.tag = i
+                menu.addItem(row)
+            }
+        }
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(item(tr("Загрузить свои облака…", "Load your own clouds…"), #selector(loadOwnClouds(_:))))
+        if clouds.ownCount > 0 {
+            menu.addItem(item(tr("Удалить свои облака", "Remove your own clouds"), #selector(removeOwnClouds(_:))))
+        }
+    }
+
+    func setCloudsMode(_ on: Bool) {
+        guard on != AppSettings.cloudsMode, !on || !CloudScene.shared.sets.isEmpty else { return }
+        AppSettings.cloudsMode = on
+        if on {
+            CatScene.shared.runAway { CloudScene.shared.show() } // the cats leave, the sky fades in
+        } else {
+            CloudScene.shared.hide()
+            CatScene.shared.walkIn()
+        }
+    }
+
+    @objc func toggleClouds(_: Any?) {
+        setCloudsMode(!AppSettings.cloudsMode)
+    }
+
+    @objc func selectClouds(_ item: NSMenuItem) {
+        CloudScene.shared.select(item.tag)
+        setCloudsMode(true)
+    }
+
+    @objc func toggleCloudDrift(_: Any?) {
+        CloudScene.shared.drifting.toggle()
+    }
+
+    @objc func loadOwnClouds(_: Any?) {
+        let panel = NSOpenPanel()
+        panel.message = tr("Выберите картинки с облаками, папку или zip-архив. Папка со слоями 1.png, 2.png… станет одними облаками с глубиной.",
+                           "Choose cloud pictures, a folder or a zip. A folder of layers 1.png, 2.png… becomes one sky with depth.")
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = true
+        panel.allowedFileTypes = ["png", "jpg", "jpeg", "gif", "bmp", "tiff", "heic", "webp", "zip"]
+        NSApp.activate(ignoringOtherApps: true)
+        guard panel.runModal() == .OK, !panel.urls.isEmpty else { return }
+        let urls = panel.urls
+        DispatchQueue.global(qos: .userInitiated).async {
+            let entries = CloudPack.make(from: urls)
+            DispatchQueue.main.async {
+                if entries.isEmpty {
+                    let alert = NSAlert()
+                    alert.messageText = tr("Облака не нашлись", "No clouds found")
+                    alert.informativeText = tr("Нужны картинки PNG или JPG высотой хотя бы 30 пикселей.", "Pictures in PNG or JPG at least 30 pixels tall are needed.")
+                    alert.runModal()
+                    return
+                }
+                do {
+                    try CloudScene.shared.addOwn(entries)
+                    self.setCloudsMode(true)
+                } catch {
+                    NSLog("TouchBar Cats: can't save clouds: \(error)")
+                }
+            }
+        }
+    }
+
+    @objc func removeOwnClouds(_: Any?) {
+        CloudScene.shared.removeOwn()
+        if CloudScene.shared.sets.isEmpty { setCloudsMode(false) }
     }
 }

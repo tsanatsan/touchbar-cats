@@ -94,6 +94,16 @@ for k in NSMainStoryboardFile SUFeedURL SUPublicDSAKeyFile; do
     /usr/libexec/PlistBuddy -c "Delete :$k" "$PL" 2>/dev/null || true
 done
 
+# Cloud art is licensed for use inside the app only, so it never goes into the repository:
+# it is packed from a folder next to it (or CLOUDS_ART=...) straight into the app
+CLOUDS_ART=${CLOUDS_ART:-../clouds-art}
+if [ -d "$CLOUDS_ART" ]; then
+    echo "==> Clouds from $CLOUDS_ART"
+    "$APP/Contents/MacOS/MTMR" --pack-clouds "$CLOUDS_ART" "$RES/Clouds.pack"
+else
+    echo "==> No cloud art ($CLOUDS_ART): the clouds mode will only show your own"
+fi
+
 echo "==> Signing (ad-hoc)"
 # Requirement by bundle id instead of the default cdhash: macOS privacy permissions
 # (Accessibility for the keyboard) stay granted after every rebuild.

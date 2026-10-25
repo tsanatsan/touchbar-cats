@@ -13,6 +13,10 @@ struct AppSettings {
     @UserDefault(key: "cats.settings.trackpadLaser", defaultValue: true)
     static var trackpadLaser: Bool
 
+    /// Drifting clouds on the bar instead of the cats
+    @UserDefault(key: "cats.clouds.enabled", defaultValue: false)
+    static var cloudsMode: Bool
+
     /// "" follows the system language, "ru" or "en" is fixed
     @UserDefault(key: "com.toxblh.mtmr.settings.language", defaultValue: "")
     static var language: String

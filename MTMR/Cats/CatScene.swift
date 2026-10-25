@@ -263,7 +263,7 @@ final class CatScene {
             enabled = old.filter { $0 >= 0 && $0 < catBreeds.count }.map { catBreeds[$0].key }
         }
         let ids = enabled ?? all.map { $0.breed.key }
-        paused = AppSettings.nativeTouchBar
+        paused = AppSettings.nativeTouchBar || AppSettings.cloudsMode
         cats = all.filter { ids.contains($0.breed.key) }
         placeOffscreen()
         if !paused { walkIn() }
@@ -357,8 +357,9 @@ final class CatScene {
         exitDeadline = t + 1.3
     }
 
-    /// Cats come back in from the edges
+    /// Cats come back in from the edges (unless the clouds have the bar)
     func walkIn() {
+        guard !AppSettings.cloudsMode else { return }
         paused = false
         exitCompletion = nil
         lastAdvance = CACurrentMediaTime()

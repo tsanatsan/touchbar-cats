@@ -26,6 +26,7 @@ final class CatsView: NSView {
     }
 
     private var widthConstraint: NSLayoutConstraint!
+    private let cloudHost = CloudHostView()
     private var timer: Timer?
     private var interval: TimeInterval = 0
 
@@ -36,6 +37,13 @@ final class CatsView: NSView {
         translatesAutoresizingMaskIntoConstraints = false
         widthConstraint = widthAnchor.constraint(equalToConstant: preferredWidth)
         widthConstraint.isActive = true
+        // the clouds live in their own layer tree, moved by Core Animation, not redrawn by this view
+        cloudHost.frame = bounds
+        cloudHost.autoresizingMask = [.width, .height]
+        cloudHost.layer = CloudScene.shared.root
+        cloudHost.wantsLayer = true
+        cloudHost.isHidden = true
+        addSubview(cloudHost)
     }
 
     required init?(coder _: NSCoder) {
@@ -70,6 +78,14 @@ final class CatsView: NSView {
     }
 
     private func tick() {
+        let clouds = CloudScene.shared
+        if cloudHost.isHidden == clouds.active { cloudHost.isHidden = !clouds.active }
+        if clouds.active {
+            clouds.layout(width: bounds.width)
+            clouds.tick(CACurrentMediaTime())
+            schedule(clouds.interval)
+            return
+        }
         let scene = CatScene.shared
         if bounds.width > 0 { scene.width = bounds.width }
         scene.advance(to: CACurrentMediaTime())
@@ -91,6 +107,7 @@ final class CatsView: NSView {
 
     override func draw(_: NSRect) {
         guard let ctx = NSGraphicsContext.current?.cgContext else { return }
+        if CloudScene.shared.active { return } // the cloud layers cover the bar
         CatScene.shared.draw(in: ctx)
         if CatRecorder.shared.isRecording { // not part of the GIF
             ctx.setFillColor(red: 1, green: 0.23, blue: 0.19, alpha: 0.9)
@@ -106,25 +123,35 @@ final class CatsView: NSView {
 
     override func touchesBegan(with event: NSEvent) {
         for touch in event.touches(matching: .began, in: self) {
-            CatScene.shared.touchBegan(id: key(touch), x: touch.location(in: self).x)
+            if CloudScene.shared.active {
+                CloudScene.shared.touchBegan(id: key(touch), x: touch.location(in: self).x)
+            } else {
+                CatScene.shared.touchBegan(id: key(touch), x: touch.location(in: self).x)
+            }
         }
         schedule(1.0 / 60)
     }
 
     override func touchesMoved(with event: NSEvent) {
         for touch in event.touches(matching: .moved, in: self) {
-            CatScene.shared.touchMoved(id: key(touch), x: touch.location(in: self).x)
+            if CloudScene.shared.active {
+                CloudScene.shared.touchMoved(id: key(touch), x: touch.location(in: self).x)
+            } else {
+                CatScene.shared.touchMoved(id: key(touch), x: touch.location(in: self).x)
+            }
         }
     }
 
     override func touchesEnded(with event: NSEvent) {
         for touch in event.touches(matching: .ended, in: self) {
+            CloudScene.shared.touchEnded(id: key(touch))
             CatScene.shared.touchEnded(id: key(touch))
         }
     }
 
     override func touchesCancelled(with event: NSEvent) {
         for touch in event.touches(matching: .cancelled, in: self) {
+            CloudScene.shared.touchEnded(id: key(touch))
             CatScene.shared.touchEnded(id: key(touch))
         }
     }

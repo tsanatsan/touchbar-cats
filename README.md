@@ -123,6 +123,17 @@
 
 Город и пляж живут по часам на Mac: рассвет, утро, полдень, день, закат, сумерки и ночь. Солнце встаёт слева и садится справа, на закате небо розовеет, ночью в домах зажигаются окна и фонари, а по воде бегут блики. Трава и ковёр ночью просто темнеют.
 
+### Облака вместо котиков
+
+Меню **«Облака»** → **«Облака вместо котиков»**: коты убегают с тачбара, и на нём плывут пиксельные облака. Слои движутся с разной скоростью, дальние медленнее, поэтому у неба есть глубина. Двигает их сама macOS (Core Animation) плавно, с частотой экрана, а программа в это время почти не тратит процессор.
+
+- **Свайп одним пальцем** по тачбару — другие облака. Следующие тянутся за пальцем, как карусель, и на секунду показывается название. Всего 28 вариантов: от ясного дня и розовой ваты до заката, грозы и лунной ночи.
+- **Громкость двумя пальцами и яркость тремя** работают и здесь.
+- **«Облака плывут»** можно выключить: тогда небо стоит на месте.
+- **«Загрузить свои облака…»** — любые картинки, папка или zip-архив. Папка со слоями `1.png`, `2.png`… превращается в одно небо с глубиной.
+
+Облака — бесплатный набор [CraftPix](https://craftpix.net/freebies/free-sky-with-clouds-background-pixel-art-set/). Лицензия разрешает использовать их внутри программы, но не раздавать сами картинки, поэтому в репозитории их нет: они упакованы только в готовую программу в релизах.
+
 ## Котики
 
 <p align="center">
@@ -250,7 +261,7 @@ cd touchbar-cats
 make run
 ```
 
-`make install` копирует программу в «Программы», `make release` собирает универсальный архив для Apple Silicon и Intel, `ARCH=x86_64 make` — сборку только под Intel. Подпись сборки привязана к идентификатору программы, поэтому разрешение «Универсального доступа» не слетает после пересборки.
+Облака при сборке берутся из папки `../clouds-art` рядом с репозиторием (или `CLOUDS_ART=путь make`). Если её нет, режим облаков показывает только загруженные из меню. `make install` копирует программу в «Программы», `make release` собирает универсальный архив для Apple Silicon и Intel, `ARCH=x86_64 make` — сборку только под Intel. Подпись сборки привязана к идентификатору программы, поэтому разрешение «Универсального доступа» не слетает после пересборки.
 
 **Конфиг** лежит в `~/Library/Application Support/MTMR/items.json`, формат тот же, что у MTMR. По умолчанию там только коты:
 
@@ -306,6 +317,7 @@ make run
 - **Laser pointer from the trackpad:** move the cursor and a red dot appears on the bar right above the trackpad, rising as your finger goes to the far edge. The cats chase it and leap as high as it is. Can be turned off in Settings.
 - **Words:** type `fish`/`food` (bowl), `box`, `mouse`, `hello`, `bad`, `sleep`, a cat's name, or `cat 25` for a 25-minute pomodoro. A word counts after a space or a short pause, and its letters burst into sparks when the cats get it.
 - **Letter color:** firefly, pink, blue, lilac, gold, mint or rainbow. The glow, the trail, the sparks and the light on the cats' fur all follow it.
+- **Clouds instead of cats:** drifting pixel skies with parallax layers; swipe one finger for the next of 28 skies, two and three fingers still set volume and brightness. Load your own pictures from the menu. The clouds are a free [CraftPix](https://craftpix.net) set that may only ship inside the app, so the pictures are not in the repository.
 - **Backgrounds:** black, grass, a burgundy Soviet carpet, a city or a beach. The city and the beach follow the clock: dawn, noon, sunset and night, with the sun crossing the bar and windows lighting up after dark.
 - **Kittens** that follow their parent, **seasons and holidays** (snow, leaves, Santa hats, Halloween pumpkins), quiet **sounds** (off by default).
 - **Useful bits:** sleepy cats on low battery and a cat warming up by the charging port, typing stats in the menu, and a 5-second **GIF** of the Touch Bar saved to the Desktop.
