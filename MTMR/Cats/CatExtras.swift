@@ -9,6 +9,7 @@
 import AppKit
 import CoreAudio
 import IOKit.ps
+import UserNotifications
 
 final class CatMouse {
     var x: CGFloat
@@ -47,6 +48,14 @@ struct LaserDot {
     var y: CGFloat = 0
     var touchStart: (x: CGFloat, y: CGFloat)?
     var lastMove: CGFloat = 0
+}
+
+/// Three fingers on the trackpad: a turquoise laser grid from the top of the bar to the floor that knocks cats out
+struct LaserBeam {
+    var active = false
+    var x: CGFloat = 0
+    var lastX: CGFloat = 0
+    var start: CGFloat?
 }
 
 struct Flake {
@@ -147,6 +156,7 @@ final class CatExtras {
     var nextBoxAt: CGFloat = .random(in: 900 ... 1800)
     var bowl: CatBowl?
     var laser = LaserDot()
+    var beam = LaserBeam()
     var flakes: [Flake] = []
     var flakeT: CGFloat = 0
     var calendar = CatCalendar.now()
@@ -164,6 +174,7 @@ final class CatExtras {
     var lowBattery: Bool { return batteryLevel < 0.2 && !pluggedIn }
 
     var pomodoroEnd: Date?
+    var pomodoroTimer: Timer? // fires at the end even when the cats aren't on the bar
     weak var pomodoroCat: Cat?
 
     let stats = TypingStats()
@@ -221,7 +232,7 @@ extension CatScene {
         case "коробка", "box": action = { self.putBox(at: at) }
         case "мышка", "мышь", "mouse": action = { self.releaseMouse(towards: at) }
         default:
-            action = cats.first(where: { $0.mode != .exit && !$0.removing &&
+            action = cats.first(where: { $0.mode != .exit && !$0.removing && !$0.isDown &&
                 ($0.breed.name.lowercased() == w || $0.breed.displayName.lowercased() == w) }).map { cat in { self.callByName(cat, at: at) } }
         }
         guard let run = action else { return false }
@@ -292,10 +303,35 @@ extension CatScene {
         }))
     }
 
+    /// The pomodoro is over: the cat stretches and says so on the bar; if the bar isn't showing the cats, macOS says it
+    func pomodoroDone() {
+        guard extras.pomodoroEnd != nil else { return }
+        extras.pomodoroEnd = nil
+        extras.pomodoroTimer?.invalidate()
+        extras.pomodoroTimer = nil
+        let cat = extras.pomodoroCat
+        if let cat = cat, !paused, !systemAsleep, cats.contains(where: { $0 === cat }) {
+            cat.setMode(.stretch, 1.2)
+            cat.happy = 1.5
+            bubbles.append(Bubble(cat: cat, text: tr("перерыв!", "break time!"), life: 6))
+            CatSounds.shared.play(.meow, pan: pan(cat.x))
+            HapticFeedback.instance.tap(type: .strong)
+            return
+        }
+        cat?.setMode(.stretch, 1.2)
+        let content = UNMutableNotificationContent()
+        content.title = tr("Перерыв!", "Break time!")
+        content.body = cat.map { tr("\($0.breed.displayName) отсидел свою смену. Можно потянуться.", "\($0.breed.displayName) has done the shift. Time to stretch.") }
+            ?? tr("Помидор закончился. Можно потянуться.", "The pomodoro is over. Time to stretch.")
+        content.sound = .default
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "pomodoro", content: content, trigger: nil))
+    }
+
     private func startPomodoro(minutes: Int, x: CGFloat) {
         if minutes <= 0 {
             if let cat = extras.pomodoroCat { cat.setMode(.stretch, 1) }
             extras.pomodoroEnd = nil
+            extras.pomodoroTimer?.invalidate()
             return
         }
         let m = min(minutes, 180)
@@ -303,6 +339,12 @@ extension CatScene {
         extras.pomodoroCat?.setMode(.stretch, 1)
         extras.pomodoroEnd = Date().addingTimeInterval(TimeInterval(m * 60))
         extras.pomodoroCat = cat
+        // its own timer: the break comes on time even with the regular Touch Bar or a sleeping screen
+        extras.pomodoroTimer?.invalidate()
+        let timer = Timer(timeInterval: TimeInterval(m * 60), repeats: false) { [weak self] _ in self?.pomodoroDone() }
+        RunLoop.main.add(timer, forMode: .common)
+        extras.pomodoroTimer = timer
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
         cat.setMode(.pomodoro, 99)
         bubbles.append(Bubble(cat: cat, text: tr("\(m) мин", "\(m) min"), life: 2.5))
     }
@@ -313,7 +355,7 @@ extension CatScene {
     }
 
     func say(_ text: String) {
-        if let cat = cats.filter({ $0.x > 20 && $0.x < width - 20 && $0.mode != .front }).randomElement() {
+        if let cat = cats.filter({ $0.x > 20 && $0.x < width - 20 && $0.mode != .front && !$0.isDown }).randomElement() {
             bubbles.append(Bubble(cat: cat, text: text, life: 3))
         }
     }
@@ -321,14 +363,14 @@ extension CatScene {
     // MARK: - Update
 
     var extrasLively: Bool {
-        if extras.laser.active || extras.mouse != nil || extras.bowl != nil { return true }
+        if extras.laser.active || extras.beam.active || extras.mouse != nil || extras.bowl != nil { return true }
         let moving: [CatMode] = [.eatGo, .boxGo, .warmGo, .laserChase, .laserCoast, .laserSwat, .laserClap, .mouseHunt, .wave]
         return cats.contains { moving.contains($0.mode) }
     }
 
     /// Falling leaves and snow look fine at the calm frame rate; only a wiggling chubby cat in the box needs more
     var extrasAmbient: Bool {
-        return extras.box?.occupant?.breed.fat == true
+        return extras.box?.occupant?.breed.fat == true || cats.contains { $0.isDown } // the pool spreads, then the cat fades
     }
 
     func updateExtras(_ dt: CGFloat, points: [TouchPoint]) {
@@ -351,14 +393,7 @@ extension CatScene {
             e.batteryCheckAt = t + 20
             checkBattery()
         }
-        if let end = e.pomodoroEnd, Date() >= end, let cat = e.pomodoroCat {
-            e.pomodoroEnd = nil
-            cat.setMode(.stretch, 1.2)
-            cat.happy = 1.5
-            bubbles.append(Bubble(cat: cat, text: tr("перерыв!", "break time!"), life: 6))
-            CatSounds.shared.play(.meow, pan: pan(cat.x))
-            HapticFeedback.instance.tap(type: .strong)
-        }
+        if let end = e.pomodoroEnd, Date() >= end { pomodoroDone() }
         CatSounds.shared.setPurr(cats.contains { $0.petT > 0.35 }, pan: pan(cats.first { $0.petT > 0.35 }?.x ?? width / 2))
         CatSounds.shared.tick()
     }
@@ -367,9 +402,21 @@ extension CatScene {
         syncTrackpad()
         var laser = extras.laser
         defer { extras.laser = laser }
+        guard CatTrackpad.enabled, let finger = CatTrackpad.shared.finger, CACurrentMediaTime() - finger.time < 0.25 else {
+            laser.active = false
+            laser.touchStart = nil
+            extras.beam = LaserBeam()
+            return
+        }
+        if finger.count >= 3 && AppSettings.laserBeam {
+            laser.active = false
+            laser.touchStart = nil
+            updateBeam(finger)
+            return
+        }
+        extras.beam = LaserBeam()
         // one finger moving the cursor; a click, a resting finger or a two-finger scroll is not a laser
-        guard CatTrackpad.enabled, let finger = CatTrackpad.shared.finger, finger.count == 1,
-              CACurrentMediaTime() - finger.time < 0.25 else {
+        guard finger.count == 1 else {
             laser.active = false
             laser.touchStart = nil
             return
@@ -399,6 +446,55 @@ extension CatScene {
         for cat in cats where [.sit, .walk, .groom, .run, .boop, .laserCoast].contains(cat.mode) && cat.breed.playful > 0.35 &&
             abs(cat.x - laser.x) < 400 && Bool.random() {
             cat.setMode(.laserChase, 99)
+        }
+    }
+
+    /// Three fingers sweeping the trackpad: the beam follows them and every cat it crosses goes down
+    private func updateBeam(_ finger: CatTrackpad.Finger) {
+        var beam = extras.beam
+        defer { extras.beam = beam }
+        let x = laserPoint(finger).x
+        guard let start = beam.start else {
+            beam.start = x
+            beam.x = x
+            beam.lastX = x
+            return
+        }
+        if !beam.active {
+            guard abs(x - start) > 6 else { return } // three fingers resting or tapping don't fire
+            beam.active = true
+            beam.x = x
+        }
+        beam.lastX = beam.x
+        beam.x = x
+        let lo = min(beam.lastX, beam.x) - 5, hi = max(beam.lastX, beam.x) + 5 // the whole sweep since the last frame
+        // faces at the glass and cats still off the bar are out of reach
+        for cat in cats where cat.x > lo && cat.x < hi && cat.x > 0 && cat.x < width && !cat.isDown && !cat.removing &&
+            ![.front, .attend].contains(cat.mode) {
+            knockOut(cat)
+        }
+    }
+
+    private func knockOut(_ cat: Cat) {
+        if cat.carrying, let ball = ball {
+            cat.carrying = false
+            ball.held = false
+            ball.x = cat.x
+            ball.y = ballGroundY - 4
+        }
+        cat.prey = nil
+        cat.target = nil
+        cat.jump = nil
+        cat.jy = 0
+        cat.happy = 0
+        cat.petT = 0
+        cat.setMode(.knockedOut, 99)
+        // the others nearby scatter away from the beam
+        for other in cats where other !== cat && abs(other.x - cat.x) < 90 &&
+            [.sit, .walk, .groom, .boop, .loaf, .run, .laserCoast, .laserChase].contains(other.mode) {
+            if other.mode == .loaf { spawn(.bang, other.x + other.dir * 6, 9) }
+            other.tx = clamp(other.x + (other.x >= cat.x ? 1 : -1) * rnd(60, 120), 10, width - 10)
+            other.setMode(.run, 99)
         }
     }
 
@@ -601,6 +697,16 @@ extension CatScene {
             } else {
                 moveTo(cat, e.laser.x, 95, dt)
             }
+        case .knockedOut:
+            // lies there a while (the renderer spreads the pool and fades it all out), then comes back from an edge
+            if cat.mt > 7 {
+                resetState(cat)
+                let fromLeft = Bool.random()
+                cat.x = fromLeft ? -22 : width + 22
+                cat.dir = fromLeft ? 1 : -1
+                cat.tx = rnd(30, max(31, width - 30))
+                cat.setMode(.enter, 99)
+            }
         case .laserSwat, .laserClap:
             // a paw tap on the floor or two paws clapped on the dot in the air; then back to the chase
             if cat.mt >= cat.dur { cat.setMode(e.laser.active ? .laserChase : .sit, e.laser.active ? 99 : rnd(1, 2)) }
@@ -705,6 +811,8 @@ extension CatScene {
         case .inBox:
             cat.extraT = 0
             cat.dur = cat.mt // hop out now
+        case .knockedOut:
+            break
         default:
             spawn(.heart, cat.x + cat.dir * 4, 6)
         }
@@ -833,6 +941,27 @@ extension CatScene {
                 fill(ctx, f.x + 0.5, f.y + (up ? -1 : 0.5), 2, 0.8, f.color, 1, night: 0)
                 fill(ctx, f.x - 0.5, f.y, 1, 1.2, f.color, 1, night: 0)
             }
+        }
+        if extras.beam.active {
+            // a turquoise laser grid sweeping through, like the corridor in Resident Evil
+            let x = extras.beam.x, flick = 0.8 + 0.2 * sin(t * 40)
+            ctx.setFillColor(red: 0.2, green: 0.95, blue: 0.9, alpha: 0.1)
+            ctx.fill(CGRect(x: x - 6, y: 0, width: 12, height: g))
+            ctx.setStrokeColor(red: 0.45, green: 1, blue: 0.95, alpha: 0.9 * flick)
+            ctx.setLineWidth(0.5)
+            for dx in [-3, 0, 3] as [CGFloat] {
+                ctx.move(to: CGPoint(x: x + dx, y: 0))
+                ctx.addLine(to: CGPoint(x: x + dx, y: g))
+            }
+            var y: CGFloat = 1.5
+            while y < g {
+                ctx.move(to: CGPoint(x: x - 3, y: y))
+                ctx.addLine(to: CGPoint(x: x + 3, y: y))
+                y += 3
+            }
+            ctx.strokePath()
+            ctx.setFillColor(red: 0.3, green: 1, blue: 0.95, alpha: 0.35 * flick)
+            ctx.fillEllipse(in: CGRect(x: x - 7, y: g - 2.5, width: 14, height: 2.5))
         }
         if extras.laser.active {
             let x = extras.laser.x, y = extras.laser.y

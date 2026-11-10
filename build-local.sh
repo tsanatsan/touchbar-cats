@@ -56,7 +56,7 @@ for arch in $ARCHS; do
         -framework Cocoa -framework IOKit -framework CoreAudio -framework AudioToolbox \
         -framework DFRFoundation -framework MultitouchSupport \
         -framework CoreBrightness -framework DisplayServices \
-        -framework AVFoundation \
+        -framework AVFoundation -framework UserNotifications \
         -o "$OBJ/MTMR-$arch"
     binaries+=("$OBJ/MTMR-$arch")
 done
@@ -80,6 +80,11 @@ for s in 16 32 128 256 512; do
 done
 iconutil -c icns "$ICONSET" -o "$RES/AppIcon.icns"
 
+# Language folders: with them macOS shows its own buttons and panels (Open, Cancel, Delete) in Russian too
+mkdir -p "$RES/ru.lproj" "$RES/en.lproj"
+printf '"CFBundleName" = "TouchBar Cats";\n' > "$RES/ru.lproj/InfoPlist.strings"
+printf '"CFBundleName" = "TouchBar Cats";\n' > "$RES/en.lproj/InfoPlist.strings"
+
 echo "==> Info.plist"
 PL="$APP/Contents/Info.plist"
 sed -e 's/$(DEVELOPMENT_LANGUAGE)/en/' \
@@ -90,21 +95,13 @@ sed -e 's/$(DEVELOPMENT_LANGUAGE)/en/' \
     "$SRC/Info.plist" > "$PL"
 /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile AppIcon" "$PL"
 /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string TouchBar Cats" "$PL"
+/usr/libexec/PlistBuddy -c "Delete :CFBundleLocalizations" "$PL" 2>/dev/null || true
+/usr/libexec/PlistBuddy -c "Add :CFBundleLocalizations array" -c "Add :CFBundleLocalizations:0 string en" -c "Add :CFBundleLocalizations:1 string ru" "$PL"
 for k in NSMainStoryboardFile SUFeedURL SUPublicDSAKeyFile; do
     /usr/libexec/PlistBuddy -c "Delete :$k" "$PL" 2>/dev/null || true
 done
 
-# Cloud art is licensed for use inside the app only, so it never goes into the repository:
-# it is packed from a folder next to it (or CLOUDS_ART=...) straight into the app
-CLOUDS_ART=${CLOUDS_ART:-../clouds-art}
-if [ -d "$CLOUDS_ART" ]; then
-    echo "==> Clouds from $CLOUDS_ART"
-    "$APP/Contents/MacOS/MTMR" --pack-clouds "$CLOUDS_ART" "$RES/Clouds.pack"
-else
-    echo "==> No cloud art ($CLOUDS_ART): the clouds mode will only show your own"
-fi
-
-# The pack's cat (licensed for use inside the app only, like the clouds) comes from a folder next to the repository;
+# The pack's cat (licensed for use inside the app only) comes from a folder next to the repository;
 # without it the cats are drawn the old way
 CAT_ART=${CAT_ART:-../cat-art}
 if [ -f "$CAT_ART/CatBase.png" ]; then

@@ -19,7 +19,7 @@ install: build
 # zip for GitHub Releases: universal app, ready to drag into Applications
 release:
 	ARCH=universal ./build-local.sh
-	cd build && ditto -c -k --keepParent "TouchBar Cats.app" TouchBar-Cats.zip
+	cd build && ditto -c -k --norsrc --noextattr --keepParent "TouchBar Cats.app" TouchBar-Cats.zip
 
 clean:
 	rm -rf build

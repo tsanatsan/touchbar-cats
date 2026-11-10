@@ -15,6 +15,10 @@ enum GlyphCache {
     /// Pixels of a character rendered small and crisp, centered at (0, 0)
     static func pixels(_ ch: String) -> [(Int, Int)] {
         if let cached = cache[ch] { return cached }
+        if let drawn = PixelFont.pixels(ch) { // letters and digits from our own pixel font
+            cache[ch] = drawn
+            return drawn
+        }
         let size = 14
         var data = [UInt8](repeating: 0, count: size * size)
         var result: [(Int, Int)] = []
@@ -385,6 +389,9 @@ extension CatScene {
             pose = (right ? PackAnim.jump.right : PackAnim.jump.left, k < 0.12 ? 0 : (k < 0.5 ? 1 : (k < 0.88 ? 2 : 3)))
         case .laserSwat:
             pose = once(.swat)
+        case .knockedOut: // a startled moment, then flat on its side
+            pose = cat.mt < 0.3 ? (43, 0) : (right ? 19 : 18, 0)
+            shut = cat.mt >= 0.3
         case .laserClap:
             pose = once(.hindLegs)
         case .loaf, .pomodoro, .warm:
@@ -512,12 +519,52 @@ extension CatScene {
            let image = CGImage(width: bw, height: bh, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: bw * 4, space: displaySpace,
                                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
                                provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent) {
-            ctx.saveGState()
-            ctx.interpolationQuality = sx < 0.95 ? .medium : .none // kittens are scaled down smoothly, the rest stay crisp
-            ctx.translateBy(x: left + CGFloat(x0) * sx, y: top + CGFloat(y1 + 1) * sy) // the view is flipped, images are not
-            ctx.scaleBy(x: 1, y: -1)
-            ctx.draw(image, in: CGRect(x: 0, y: 0, width: CGFloat(bw) * sx, height: CGFloat(bh) * sy))
-            ctx.restoreGState()
+            let box = CGRect(x: left + CGFloat(x0) * sx, y: top + CGFloat(y0) * sy, width: CGFloat(bw) * sx, height: CGFloat(bh) * sy)
+            func put(dx: CGFloat, clip: CGRect? = nil) {
+                ctx.saveGState()
+                if let clip = clip { ctx.clip(to: clip) }
+                ctx.interpolationQuality = sx < 0.95 ? .medium : .none // kittens are scaled down smoothly, the rest stay crisp
+                ctx.translateBy(x: box.minX + dx, y: box.maxY) // the view is flipped, images are not
+                ctx.scaleBy(x: 1, y: -1)
+                ctx.draw(image, in: CGRect(x: 0, y: 0, width: box.width, height: box.height))
+                ctx.restoreGState()
+            }
+            if cat.isDown {
+                // diced by the laser grid (a nod to Resident Evil): hair-thin red lines over the whole body,
+                // a pool spreading under it, and at the end it all fades away
+                ctx.saveGState()
+                ctx.setAlpha(max(0, min(1, 7 - cat.mt)))
+                let down = max(0, cat.mt - 0.3), k = min(1, down / 1.2)
+                if cat.mt >= 0.3 {
+                    let pw = (8 + 16 * k) * sx, ph = 1.4 + 1.2 * k
+                    ctx.setFillColor(red: 0.42, green: 0.04, blue: 0.07, alpha: 0.85)
+                    ctx.fillEllipse(in: CGRect(x: snap(cat.x) - pw / 2, y: ground - ph / 2 - 0.3, width: pw, height: ph))
+                }
+                put(dx: 0)
+                ctx.translateBy(x: box.minX, y: box.maxY)
+                ctx.scaleBy(x: 1, y: -1)
+                let local = CGRect(x: 0, y: 0, width: box.width, height: box.height)
+                ctx.clip(to: local, mask: image) // only on the cat itself
+                ctx.setStrokeColor(red: 0.62, green: 0.03, blue: 0.08, alpha: 0.7 * min(1, cat.mt / 0.15))
+                ctx.setLineWidth(0.5) // one pixel of the Touch Bar
+                let step = 4 * sx
+                var gx = step / 2
+                while gx < local.width {
+                    ctx.move(to: CGPoint(x: gx, y: 0))
+                    ctx.addLine(to: CGPoint(x: gx, y: local.height))
+                    gx += step
+                }
+                var gy = step / 2
+                while gy < local.height {
+                    ctx.move(to: CGPoint(x: 0, y: gy))
+                    ctx.addLine(to: CGPoint(x: local.width, y: gy))
+                    gy += step
+                }
+                ctx.strokePath()
+                ctx.restoreGState()
+            } else {
+                put(dx: 0)
+            }
         }
         // the yarn ball in its mouth
         if cat.carrying, let nose = s.nose {

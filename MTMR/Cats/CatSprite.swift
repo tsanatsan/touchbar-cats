@@ -276,7 +276,7 @@ private func sidePose(_ cat: Cat, t: CGFloat) -> SpriteCanvas {
         sideHead(c, 18, 3, breed: b, eyes: .wide)
         c.tail([CGPoint(x: 7, y: 10), CGPoint(x: 5, y: 9), CGPoint(x: 3, y: 9), CGPoint(x: 1, y: 8)], thick: thick)
 
-    case .loaf, .pomodoro, .warm:
+    case .loaf, .pomodoro, .warm, .knockedOut:
         let breath: CGFloat = sin(t * 1.6 + seed) > 0 ? 0.35 : 0
         if fat {
             c.ellipse(13, 14.3, 8.4, 3.1 + breath, .body)

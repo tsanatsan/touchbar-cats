@@ -17,9 +17,10 @@ enum CatMode {
     // toys, words and helpers (CatExtras.swift)
     case eatGo, eat, wave, sulk, boxGo, inBox, pomodoro, warmGo, warm
     case laserChase, laserCoast, laserSwat, laserClap, mouseHunt
+    case knockedOut // hit by the three-finger beam: lies there, fades, comes back from an edge
 }
 
-private let extraModes: Set<CatMode> = [.eatGo, .eat, .wave, .sulk, .boxGo, .inBox, .pomodoro, .warmGo, .warm, .laserChase, .laserCoast, .laserSwat, .laserClap, .mouseHunt]
+private let extraModes: Set<CatMode> = [.eatGo, .eat, .wave, .sulk, .boxGo, .inBox, .pomodoro, .warmGo, .warm, .laserChase, .laserCoast, .laserSwat, .laserClap, .mouseHunt, .knockedOut]
 
 enum FlyState {
     case rise, hover, drop, knocked, fall
@@ -106,6 +107,7 @@ final class Cat {
     var coast: (v: CGFloat, drag: CGFloat, hold: CGFloat) = (0, 2, 0) // running on after the laser dot is gone
 
     var isExtraMode: Bool { return extraModes.contains(mode) }
+    var isDown: Bool { return mode == .knockedOut }
     var slot = 0 // place in the row at the glass
 
     init(breed: Breed, index: Int) {
@@ -271,7 +273,7 @@ final class CatScene {
             defaults.set(ids, forKey: "cats.enabledIds") // saved together with the flag, so no cat is left out
             defaults.set(true, forKey: "cats.eighteen")
         }
-        paused = AppSettings.nativeTouchBar || AppSettings.cloudsMode
+        paused = AppSettings.nativeTouchBar
         cats = all.filter { ids.contains($0.breed.key) }
         placeOffscreen()
         if !paused { walkIn() }
@@ -367,9 +369,8 @@ final class CatScene {
         exitDeadline = t + 1.3
     }
 
-    /// Cats come back in from the edges (unless the clouds have the bar)
+    /// Cats come back in from the edges
     func walkIn() {
-        guard !AppSettings.cloudsMode else { return }
         paused = false
         exitCompletion = nil
         lastAdvance = CACurrentMediaTime()
@@ -447,7 +448,8 @@ final class CatScene {
     /// Advances the world to `now`; safe to call from several views in the same frame
     func advance(to now: CFTimeInterval) {
         if lastAdvance == 0 { lastAdvance = now }
-        let dt = CGFloat(min(0.05, now - lastAdvance))
+        // up to 0.15 s per step: the calm frame rate ticks every 0.1 s, a tighter cap would slow the cats' world down
+        let dt = CGFloat(min(0.15, now - lastAdvance))
         guard dt >= 0.002 else { return }
         lastAdvance = now
         guard !paused, !systemAsleep else { return }
@@ -490,7 +492,7 @@ final class CatScene {
             keyboardAllowed = allowed
             if allowed { installGlobalMonitor() }
         }
-        if !allowed && t >= hintAt, let cat = cats.filter({ $0.mode != .exit && $0.mode != .front && $0.x > 20 && $0.x < width - 20 }).randomElement() {
+        if !allowed && t >= hintAt, let cat = cats.filter({ $0.mode != .exit && $0.mode != .front && !$0.isDown && $0.x > 20 && $0.x < width - 20 }).randomElement() {
             hintAt = t + 45
             bubbles.append(Bubble(cat: cat, text: tr("нужен доступ", "need access"), life: 4))
         }
@@ -603,7 +605,7 @@ final class CatScene {
         }
         ksTarget = min(1, CGFloat(ksCount - 1) * 0.25)
         if ksCount == 2 { assignSlots() }
-        for cat in cats where !cat.removing && ![.attend, .front, .exit].contains(cat.mode) {
+        for cat in cats where !cat.removing && !cat.isDown && ![.attend, .front, .exit].contains(cat.mode) {
             if cat.mode == .loaf { spawn(.bang, cat.x + cat.dir * 6, 9) }
             if cat.carrying {
                 cat.carrying = false
@@ -617,7 +619,7 @@ final class CatScene {
     }
 
     private func meowBack(x: CGFloat) {
-        guard let cat = cats.filter({ !$0.removing && $0.mode != .exit }).min(by: { abs($0.x - x) < abs($1.x - x) }) else { return }
+        guard let cat = cats.filter({ !$0.removing && $0.mode != .exit && !$0.isDown }).min(by: { abs($0.x - x) < abs($1.x - x) }) else { return }
         pending.append((t + 0.45, { [weak self] in
             guard let self = self else { return }
             if cat.mode == .front {
@@ -700,7 +702,7 @@ final class CatScene {
     private func fetchBall() {
         guard let ball = ball, !ball.held else { return }
         let busy: [CatMode] = [.jump, .crouch, .front, .attend, .exit, .enter, .carry, .fetch, .loaf]
-        if let cat = cats.filter({ !busy.contains($0.mode) }).min(by: { abs($0.x - ball.x) < abs($1.x - ball.x) }) {
+        if let cat = cats.filter({ !busy.contains($0.mode) && !$0.isDown }).min(by: { abs($0.x - ball.x) < abs($1.x - ball.x) }) {
             cat.prey = nil
             cat.setMode(.fetch, 99)
         }
@@ -814,7 +816,7 @@ final class CatScene {
             cat.setMode(.yawn, 0.9)
             return
         }
-        let others = cats.filter { $0 !== cat && $0.mode != .loaf && !$0.removing && $0.mode != .exit }
+        let others = cats.filter { $0 !== cat && $0.mode != .loaf && !$0.removing && $0.mode != .exit && !$0.isDown }
         let options: [(CatMode, CGFloat)] = [
             (.walk, 3), (.sit, 2.5), (.groom, 1.4),
             (.loaf, b.sleepy * (isNight ? 9 : 1.6)),
@@ -857,7 +859,8 @@ final class CatScene {
         taps.removeAll()
         let doubles = doubleTaps
         doubleTaps.removeAll()
-        let points = Array(touches.values)
+        // two or three fingers on the bar change the volume or the brightness: the cats leave them alone
+        let points = touches.count >= 2 ? [] : Array(touches.values)
 
         if t >= powerCheckAt {
             powerCheckAt = t + 20
@@ -875,12 +878,19 @@ final class CatScene {
 
         if t - lastKs > 4 && ksTarget > 0 { ksTarget = max(0, ksTarget - dt * 0.3) }
 
-        // a double tap anywhere drops the ball right there (on the ball itself: a cat fetches it)
+        // a double tap drops the ball there; on a cat it lands beside it, on the freer side, not on its head.
+        // On the ball itself a cat fetches it
         for x in doubles {
             if let ball = ball, !ball.held, abs(ball.x - x) < 9 {
                 fetchBall()
             } else if !cats.contains(where: { $0.mode == .front && abs($0.x - x) < 14 * frontScale($0) }) {
-                dropBall(at: x)
+                if let cat = cats.filter({ abs($0.x - x) < 11 }).min(by: { abs($0.x - x) < abs($1.x - x) }) {
+                    let side: CGFloat = x >= cat.x ? 1 : -1
+                    let room = { (s: CGFloat) -> Bool in !self.cats.contains { abs($0.x - (cat.x + s * 18)) < 9 } }
+                    dropBall(at: cat.x + (room(side) || !room(-side) ? side : -side) * 18)
+                } else {
+                    dropBall(at: x)
+                }
             }
         }
 
@@ -1083,7 +1093,7 @@ final class CatScene {
 
         // petting: a slow finger over the cat
         let petted = !leaving && points.contains { abs($0.x - cat.x) < reach && abs(recentVx($0, now)) < 70 }
-        if petted && ![.jump, .crouch, .hunt, .swatGo, .swat, .attend, .carry, .fetch].contains(cat.mode) {
+        if petted && ![.jump, .crouch, .hunt, .swatGo, .swat, .attend, .carry, .fetch, .knockedOut].contains(cat.mode) {
             cat.petT += dt
             cat.petIdle = 0
         } else {
@@ -1201,7 +1211,7 @@ final class CatScene {
                 cat.setMode(.sit, 1.6)
             }
         case .boopGo:
-            guard let o = cat.other, cats.contains(where: { $0 === o }), o.mode != .loaf, o.mode != .exit else {
+            guard let o = cat.other, cats.contains(where: { $0 === o }), o.mode != .loaf, o.mode != .exit, !o.isDown else {
                 cat.setMode(.sit, 2)
                 break
             }
@@ -1293,7 +1303,7 @@ final class CatScene {
                     cat.setMode(.sit, rnd(0.8, 1.8))
                 }
             }
-        case .eatGo, .eat, .wave, .sulk, .boxGo, .inBox, .pomodoro, .warmGo, .warm, .laserChase, .laserCoast, .laserSwat, .laserClap, .mouseHunt:
+        case .eatGo, .eat, .wave, .sulk, .boxGo, .inBox, .pomodoro, .warmGo, .warm, .laserChase, .laserCoast, .laserSwat, .laserClap, .mouseHunt, .knockedOut:
             updateExtraMode(cat, dt)
         default:
             if cat.mode == .loaf {

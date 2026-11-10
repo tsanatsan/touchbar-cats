@@ -5,10 +5,6 @@ build/
 *.xcuserdata
 DerivedData/
 
-# cloud art may only ship inside the app (CraftPix license), never as files
-clouds-art/
-*.pack
-
 # the pack cat sheet may only ship inside the app
 cat-art/
 CatBase.png

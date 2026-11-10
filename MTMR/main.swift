@@ -5,7 +5,7 @@
 
 import Cocoa
 
-CloudPack.runFromCommandLine() // the release build packs the cloud art with the app itself
+applyAppLanguage() // macOS's own buttons follow the language chosen in the menu
 
 let app = NSApplication.shared
 let delegate = AppDelegate()

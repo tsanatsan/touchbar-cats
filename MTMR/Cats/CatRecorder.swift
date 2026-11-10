@@ -13,6 +13,8 @@ final class CatRecorder {
     static let shared = CatRecorder()
 
     private(set) var isRecording = false
+    /// The last GIF saved, for "Show the last GIF" in the menu
+    var lastGIF: URL?
     private var frames: [CGImage] = []
     private var startTime: CFTimeInterval = 0
     private var nextFrame: CFTimeInterval = 0
@@ -60,9 +62,13 @@ final class CatRecorder {
             let url = desktop.appendingPathComponent("TouchBar Cats \(formatter.string(from: Date())).gif")
             let ok = CatRecorder.writeGIF(captured, delay: delay, to: url)
             DispatchQueue.main.async {
-                guard ok else { return }
-                scene.say(tr("GIF на рабочем столе", "GIF saved to Desktop"))
-                NSWorkspace.shared.activateFileViewerSelecting([url])
+                // no Finder window popping up over whatever you are typing: a cat says it, the menu shows the file
+                if ok {
+                    CatRecorder.shared.lastGIF = url
+                    scene.say(tr("GIF на рабочем столе", "GIF saved to Desktop"))
+                } else {
+                    scene.say(tr("GIF не сохранился", "GIF not saved"))
+                }
             }
         }
     }

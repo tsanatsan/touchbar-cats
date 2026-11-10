@@ -13,9 +13,9 @@ struct AppSettings {
     @UserDefault(key: "cats.settings.trackpadLaser", defaultValue: true)
     static var trackpadLaser: Bool
 
-    /// Drifting clouds on the bar instead of the cats
-    @UserDefault(key: "cats.clouds.enabled", defaultValue: false)
-    static var cloudsMode: Bool
+    /// Three fingers on the trackpad fire a beam that knocks cats out (off by default: it's not for everyone)
+    @UserDefault(key: "cats.settings.laserBeam", defaultValue: false)
+    static var laserBeam: Bool
 
     /// "" follows the system language, "ru" or "en" is fixed
     @UserDefault(key: "com.toxblh.mtmr.settings.language", defaultValue: "")
